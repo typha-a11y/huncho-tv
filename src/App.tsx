@@ -62,7 +62,7 @@ export default function App() {
     <div className="min-h-screen bg-[#F8F9FB] text-slate-900 font-sans pb-20">
       <Navbar />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 py-6">
         
         {/* Genre Filter Bar */}
         <div className="flex gap-2 overflow-x-auto pb-4 hide-scrollbar mb-8 items-center border-b border-slate-200/60 sticky top-16 z-30 bg-[#F8F9FB]/90 backdrop-blur-md pt-2">
@@ -97,30 +97,30 @@ export default function App() {
         </div>
 
         {activeTab === "home" ? (
-          <div className="space-y-12 animate-in fade-in duration-500">
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
             <HeroBanner movie={heroMovie} />
             
             <BentoGrid title="Trending This Week" movies={trendingGrid} />
             
-            <div className="pt-6 md:pt-8">
+            <div className="pt-2">
               <div className="flex items-center justify-between mb-4">
-                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Popular Movies</h2>
+                 <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Popular Movies</h2>
                  <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-sm">View All</button>
               </div>
               <CategoryCarousel title="" movies={popular} />
             </div>
             
-            <div className="pt-6 md:pt-8">
+            <div className="pt-2">
               <div className="flex items-center justify-between mb-4">
-                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Top Rated Classics</h2>
+                 <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Top Rated Classics</h2>
                  <button onClick={() => setActiveTab("top_rated")} className="text-indigo-600 font-bold hover:underline text-sm">View All</button>
               </div>
               <CategoryCarousel title="" movies={topRated} />
             </div>
             
-            <div className="pt-6 md:pt-8">
+            <div className="pt-2">
               <div className="flex items-center justify-between mb-4">
-                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Upcoming Releases</h2>
+                 <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Upcoming Releases</h2>
                  <button onClick={() => setActiveTab("upcoming")} className="text-indigo-600 font-bold hover:underline text-sm">View All</button>
               </div>
               <CategoryCarousel title="" movies={upcoming} />

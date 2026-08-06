@@ -50,8 +50,8 @@ export function MovieGrid({ category }: { category: number | string }) {
   }
 
   return (
-    <div className="py-8 animate-in fade-in duration-500">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+    <div className="py-4 animate-in fade-in duration-500">
+      <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4">
         {movies.map((movie) => (
           <div
             key={movie.id}
@@ -66,15 +66,15 @@ export function MovieGrid({ category }: { category: number | string }) {
                 loading="lazy"
               />
             </div>
-            <div className="p-4 flex flex-col flex-1">
-              <h4 className="font-bold text-slate-900 text-sm line-clamp-1 mb-1">
+            <div className="p-2 xs:p-3 flex flex-col flex-1">
+              <h4 className="text-xs xs:text-sm font-semibold text-slate-900 line-clamp-1 mt-1.5 leading-tight">
                 {movie.title || movie.original_title}
               </h4>
-              <div className="flex items-center justify-between mt-auto">
-                <span className="text-slate-500 text-xs font-medium">
+              <div className="flex items-center justify-between mt-auto pt-2">
+                <span className="text-[10px] xs:text-xs text-slate-500 flex items-center gap-1">
                   {movie.release_date?.slice(0, 4)}
                 </span>
-                <span className="text-slate-700 text-xs font-bold flex items-center gap-1">
+                <span className="text-[10px] xs:text-xs text-slate-500 flex items-center gap-1 font-bold">
                   <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                   {movie.vote_average?.toFixed(1)}
                 </span>

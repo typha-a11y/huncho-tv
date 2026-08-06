@@ -12,7 +12,7 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
   const isWatchlisted = watchlist.includes(movie.id);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl min-h-[420px] h-[60vh] sm:h-[70vh] w-full group shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-200 ease-out">
+    <div className="relative overflow-hidden rounded-3xl min-h-[320px] xs:min-h-[380px] md:min-h-[460px] h-[60vh] sm:h-[70vh] w-full group shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-200 ease-out">
       <img
         src={getImageUrl(movie.backdrop_path || movie.poster_path, "original")}
         alt={movie.title}
@@ -22,12 +22,12 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
       {/* Light gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent" />
       
-      <div className="relative z-10 flex flex-col justify-end p-6 md:p-8 h-full w-full">
-        <div className="max-w-2xl bg-white/70 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-white/50 shadow-sm">
+      <div className="relative z-10 flex flex-col justify-end p-4 xs:p-6 md:p-8 h-full w-full">
+        <div className="max-w-2xl bg-white/70 backdrop-blur-md p-4 xs:p-5 sm:p-6 rounded-2xl border border-white/50 shadow-sm">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight mb-4"
+            className="text-xl xs:text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-2 sm:mb-4 line-clamp-2"
           >
             {movie.title || movie.original_title}
           </motion.h1>
@@ -52,7 +52,7 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-slate-600 text-base sm:text-lg line-clamp-2 mb-8 max-w-xl font-medium"
+            className="text-slate-600 text-xs xs:text-sm line-clamp-2 mb-4 max-w-xl font-medium"
           >
             {movie.overview}
           </motion.p>
@@ -61,20 +61,20 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-wrap items-center gap-4"
+            className="flex flex-wrap items-center gap-3 sm:gap-4"
           >
             <button 
               onClick={() => setSelectedMovieId(movie.id)}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all hover:-translate-y-0.5"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white min-h-[44px] px-4 py-2.5 text-xs xs:text-sm rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all hover:-translate-y-0.5"
             >
-              <Play className="w-5 h-5 fill-current" />
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
               Watch Now
             </button>
             <button 
               onClick={() => isWatchlisted ? removeFromWatchlist(movie.id) : addToWatchlist(movie.id)}
-              className="flex items-center gap-2 bg-white/80 hover:bg-white backdrop-blur-md text-slate-900 px-6 py-4 rounded-xl font-bold shadow-sm border border-slate-200/60 transition-all hover:-translate-y-0.5"
+              className="flex items-center gap-2 bg-white/80 hover:bg-white backdrop-blur-md text-slate-900 min-h-[44px] px-4 py-2.5 text-xs xs:text-sm rounded-xl font-bold shadow-sm border border-slate-200/60 transition-all hover:-translate-y-0.5"
             >
-              {isWatchlisted ? <Check className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5" />}
+              {isWatchlisted ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" /> : <Plus className="w-4 h-4 sm:w-5 sm:h-5" />}
               {isWatchlisted ? "Added" : "Add to Library"}
             </button>
           </motion.div>

@@ -9,9 +9,9 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
   if (!movies?.length) return null;
 
   return (
-    <section className="py-6 md:py-8">
-      <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{title}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+    <section className="py-2 md:py-4">
+      <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4">{title}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         {/* Large Feature Item */}
         <div 
           onClick={() => setSelectedMovieId(movies[0].id)}
@@ -32,7 +32,7 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
         </div>
 
         {/* Two smaller items stacked */}
-        <div className="grid grid-cols-2 md:grid-cols-1 gap-4 md:gap-6 h-64 md:h-80">
+        <div className="grid grid-cols-2 md:grid-cols-1 gap-3 sm:gap-4 h-48 sm:h-64 md:h-80">
           {movies.slice(1, 3).map((movie, idx) => (
             <div 
               key={movie.id}
@@ -65,14 +65,14 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
   if (!movies?.length) return null;
 
   return (
-    <section className={title ? "py-6 md:py-8" : ""}>
-      {title && <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{title}</h2>}
-      <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
+    <section className={title ? "py-2 md:py-4" : ""}>
+      {title && <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4">{title}</h2>}
+      <div className="snap-x snap-mandatory overflow-x-auto hide-scrollbar flex gap-3 px-4 -mx-4 pb-4">
         {movies.map((movie) => (
           <div 
             key={movie.id}
             onClick={() => setSelectedMovieId(movie.id)}
-            className="snap-start shrink-0 w-36 sm:w-44 md:w-52 flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white hover:scale-[1.02] transition-transform duration-200 ease-out"
+            className="snap-start shrink-0 w-[128px] xs:w-[145px] sm:w-[175px] md:w-[200px] flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white hover:scale-[1.02] transition-transform duration-200 ease-out"
           >
             <div className="aspect-[2/3] overflow-hidden">
               <img 
@@ -82,9 +82,9 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
                 loading="lazy"
               />
             </div>
-            <div className="p-3">
-              <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{movie.title || movie.original_title}</h4>
-              <p className="text-slate-500 text-xs mt-1 font-medium flex items-center gap-1">
+            <div className="p-2 xs:p-3">
+              <h4 className="text-xs xs:text-sm font-semibold text-slate-900 line-clamp-1 mt-1.5 leading-tight">{movie.title || movie.original_title}</h4>
+              <p className="text-[10px] xs:text-xs text-slate-500 mt-1 font-medium flex items-center gap-1">
                 <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> {movie.vote_average?.toFixed(1)}
               </p>
             </div>
