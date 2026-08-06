@@ -107,7 +107,7 @@ export function MovieDetailModal() {
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-transform active:scale-95"
                   >
                     <Play className="w-5 h-5 fill-current" />
-                    Start Movie
+                    Play Stream
                   </button>
                   <button 
                     onClick={() => isWatchlisted ? removeFromWatchlist(movie.id) : addToWatchlist(movie.id)}

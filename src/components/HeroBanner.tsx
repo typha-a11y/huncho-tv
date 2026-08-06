@@ -12,18 +12,18 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
   const isWatchlisted = watchlist.includes(movie.id);
 
   return (
-    <div className="relative w-full h-[60vh] sm:h-[70vh] rounded-3xl overflow-hidden group shadow-lg">
+    <div className="relative overflow-hidden rounded-3xl min-h-[420px] h-[60vh] sm:h-[70vh] w-full group shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-200 ease-out">
       <img
         src={getImageUrl(movie.backdrop_path || movie.poster_path, "original")}
         alt={movie.title}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        className="absolute inset-0 object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
       />
       
       {/* Light gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/50 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent" />
       
-      <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10 flex flex-col md:flex-row gap-6 md:items-end justify-between">
-        <div className="max-w-2xl">
+      <div className="relative z-10 flex flex-col justify-end p-6 md:p-8 h-full w-full">
+        <div className="max-w-2xl bg-white/70 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-white/50 shadow-sm">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -52,7 +52,7 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-slate-600 text-base sm:text-lg line-clamp-2 md:line-clamp-3 mb-8 max-w-xl font-medium"
+            className="text-slate-600 text-base sm:text-lg line-clamp-2 mb-8 max-w-xl font-medium"
           >
             {movie.overview}
           </motion.p>

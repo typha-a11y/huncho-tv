@@ -9,13 +9,13 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
   if (!movies?.length) return null;
 
   return (
-    <section className="py-8">
-      <h2 className="text-2xl font-black text-slate-900 mb-6">{title}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <section className="py-6 md:py-8">
+      <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{title}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {/* Large Feature Item */}
         <div 
           onClick={() => setSelectedMovieId(movies[0].id)}
-          className="md:col-span-2 relative h-64 md:h-80 rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60"
+          className="md:col-span-2 relative h-64 md:h-80 rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60 hover:scale-[1.02] transition-transform duration-200 ease-out"
         >
           <img 
             src={getImageUrl(movies[0].backdrop_path || movies[0].poster_path, "original")} 
@@ -32,12 +32,12 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
         </div>
 
         {/* Two smaller items stacked */}
-        <div className="grid grid-cols-2 md:grid-cols-1 gap-4 h-64 md:h-80">
+        <div className="grid grid-cols-2 md:grid-cols-1 gap-4 md:gap-6 h-64 md:h-80">
           {movies.slice(1, 3).map((movie, idx) => (
             <div 
               key={movie.id}
               onClick={() => setSelectedMovieId(movie.id)}
-              className="relative h-full rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60"
+              className="relative h-full rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60 hover:scale-[1.02] transition-transform duration-200 ease-out"
             >
               <img 
                 src={getImageUrl(movie.backdrop_path || movie.poster_path, "w500")} 
@@ -65,14 +65,14 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
   if (!movies?.length) return null;
 
   return (
-    <section className="py-8">
-      <h2 className="text-2xl font-black text-slate-900 mb-6">{title}</h2>
-      <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
+    <section className={title ? "py-6 md:py-8" : ""}>
+      {title && <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{title}</h2>}
+      <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
         {movies.map((movie) => (
           <div 
             key={movie.id}
             onClick={() => setSelectedMovieId(movie.id)}
-            className="snap-start shrink-0 w-36 sm:w-44 md:w-52 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white"
+            className="snap-start shrink-0 w-36 sm:w-44 md:w-52 flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white hover:scale-[1.02] transition-transform duration-200 ease-out"
           >
             <div className="aspect-[2/3] overflow-hidden">
               <img 

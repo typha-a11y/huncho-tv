@@ -31,6 +31,72 @@ const mockMovies: Movie[] = Array.from({ length: 10 }).map((_, i) => ({
   media_type: "movie",
 }));
 
+export const getPopularMovies = async (page = 1): Promise<Movie[]> => {
+  if (!TMDB_API_KEY) return mockMovies;
+  try {
+    const res = await tmdb.get("/movie/popular", { params: { page } });
+    return res.data.results;
+  } catch (err) {
+    console.error("TMDB API Error:", err);
+    return mockMovies;
+  }
+};
+
+export const getTopRatedMovies = async (page = 1): Promise<Movie[]> => {
+  if (!TMDB_API_KEY) return mockMovies;
+  try {
+    const res = await tmdb.get("/movie/top_rated", { params: { page } });
+    return res.data.results;
+  } catch (err) {
+    console.error("TMDB API Error:", err);
+    return mockMovies;
+  }
+};
+
+export const getNowPlayingMovies = async (page = 1): Promise<Movie[]> => {
+  if (!TMDB_API_KEY) return mockMovies;
+  try {
+    const res = await tmdb.get("/movie/now_playing", { params: { page } });
+    return res.data.results;
+  } catch (err) {
+    console.error("TMDB API Error:", err);
+    return mockMovies;
+  }
+};
+
+export const getUpcomingMovies = async (page = 1): Promise<Movie[]> => {
+  if (!TMDB_API_KEY) return mockMovies;
+  try {
+    const res = await tmdb.get("/movie/upcoming", { params: { page } });
+    return res.data.results;
+  } catch (err) {
+    console.error("TMDB API Error:", err);
+    return mockMovies;
+  }
+};
+
+export const getGenres = async (): Promise<{id: number, name: string}[]> => {
+  if (!TMDB_API_KEY) return [{ id: 28, name: "Action" }, { id: 12, name: "Adventure" }, { id: 16, name: "Animation" }, { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }];
+  try {
+    const res = await tmdb.get("/genre/movie/list");
+    return res.data.genres;
+  } catch (err) {
+    console.error("TMDB API Error:", err);
+    return [];
+  }
+};
+
+export const getMoviesByGenre = async (genreId: number, page = 1): Promise<Movie[]> => {
+  if (!TMDB_API_KEY) return mockMovies;
+  try {
+    const res = await tmdb.get("/discover/movie", { params: { with_genres: genreId, page } });
+    return res.data.results;
+  } catch (err) {
+    console.error("TMDB API Error:", err);
+    return mockMovies;
+  }
+};
+
 export const getTrendingMovies = async (): Promise<Movie[]> => {
   if (!TMDB_API_KEY) return mockMovies;
   try {
