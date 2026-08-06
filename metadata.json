@@ -1,0 +1,6 @@
+{
+  "name": "HUNCHO TV",
+  "description": "A mobile-first installable React App for discovering and watching movies, featuring TMDB and OMDb integrations, a Bento-Grid layout, and a custom HLS Video Player.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
