@@ -34,6 +34,15 @@ export interface MovieDetails extends Movie {
   similar?: {
     results: Movie[];
   };
+  videos?: {
+    results: {
+      id: string;
+      key: string;
+      name: string;
+      site: string;
+      type: string;
+    }[];
+  };
 }
 
 export interface Ratings {

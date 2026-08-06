@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { X, Play, Pause, Volume2, VolumeX, Maximize, Settings } from "lucide-react";
 import { useStore } from "../lib/store";
 import { motion, AnimatePresence } from "motion/react";
@@ -9,14 +9,50 @@ import { getMovieDetails } from "../lib/api";
 const TEST_STREAM = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
 
 export function VideoPlayerModal() {
-  const { isVideoPlayerOpen, setVideoPlayerOpen, selectedMovieId } = useStore();
+  const { isVideoPlayerOpen, setVideoPlayerOpen, selectedMovieId, videoStreamUrl } = useStore();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [title, setTitle] = useState("Loading...");
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+  };
+
+  useEffect(() => {
+    if (!isPlaying) {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    } else {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, [isPlaying]);
 
   useEffect(() => {
     if (selectedMovieId) {
@@ -31,16 +67,17 @@ export function VideoPlayerModal() {
 
     const video = videoRef.current;
     let hls: Hls | null = null;
+    const streamToLoad = videoStreamUrl || TEST_STREAM;
 
     if (Hls.isSupported()) {
       hls = new Hls();
-      hls.loadSource(TEST_STREAM);
+      hls.loadSource(streamToLoad);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         video.play().catch(console.error);
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = TEST_STREAM;
+      video.src = streamToLoad;
       video.addEventListener("loadedmetadata", () => {
         video.play().catch(console.error);
       });
@@ -49,7 +86,7 @@ export function VideoPlayerModal() {
     return () => {
       if (hls) hls.destroy();
     };
-  }, [isVideoPlayerOpen]);
+  }, [isVideoPlayerOpen, videoStreamUrl]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -99,11 +136,11 @@ export function VideoPlayerModal() {
   };
 
   const toggleFullscreen = () => {
-    if (videoRef.current) {
+    if (playerRef.current) {
       if (document.fullscreenElement) {
         document.exitFullscreen();
       } else {
-        videoRef.current.requestFullscreen();
+        playerRef.current.requestFullscreen();
       }
     }
   };
@@ -113,13 +150,16 @@ export function VideoPlayerModal() {
   return (
     <AnimatePresence>
       <motion.div 
+        ref={playerRef}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="fixed inset-0 z-[60] bg-white flex flex-col"
+        className={`fixed inset-0 z-[60] bg-white flex flex-col ${!showControls ? 'cursor-none' : ''}`}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => isPlaying && setShowControls(false)}
       >
         {/* Header */}
-        <div className="absolute top-0 inset-x-0 p-4 flex items-center justify-between bg-gradient-to-b from-white via-white/80 to-transparent z-10 transition-opacity duration-300">
+        <div className={`absolute top-0 inset-x-0 p-4 flex items-center justify-between bg-gradient-to-b from-white via-white/80 to-transparent z-10 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight drop-shadow-sm">{title}</h2>
           <button 
             onClick={() => setVideoPlayerOpen(false)}
@@ -139,7 +179,7 @@ export function VideoPlayerModal() {
           />
 
           {/* Controls Footer Overlay */}
-          <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-white via-white/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col gap-4">
+          <div className={`absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-white via-white/90 to-transparent transition-opacity duration-300 flex flex-col gap-4 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             
             {/* Seek Bar */}
             <div className="flex items-center gap-4">

@@ -37,7 +37,7 @@ export const getPopularMovies = async (page = 1): Promise<Movie[]> => {
     const res = await tmdb.get("/movie/popular", { params: { page } });
     return res.data.results;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return mockMovies;
   }
 };
@@ -48,7 +48,7 @@ export const getTopRatedMovies = async (page = 1): Promise<Movie[]> => {
     const res = await tmdb.get("/movie/top_rated", { params: { page } });
     return res.data.results;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return mockMovies;
   }
 };
@@ -59,7 +59,7 @@ export const getNowPlayingMovies = async (page = 1): Promise<Movie[]> => {
     const res = await tmdb.get("/movie/now_playing", { params: { page } });
     return res.data.results;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return mockMovies;
   }
 };
@@ -70,7 +70,7 @@ export const getUpcomingMovies = async (page = 1): Promise<Movie[]> => {
     const res = await tmdb.get("/movie/upcoming", { params: { page } });
     return res.data.results;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return mockMovies;
   }
 };
@@ -81,7 +81,7 @@ export const getGenres = async (): Promise<{id: number, name: string}[]> => {
     const res = await tmdb.get("/genre/movie/list");
     return res.data.genres;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return [];
   }
 };
@@ -92,7 +92,7 @@ export const getMoviesByGenre = async (genreId: number, page = 1): Promise<Movie
     const res = await tmdb.get("/discover/movie", { params: { with_genres: genreId, page } });
     return res.data.results;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return mockMovies;
   }
 };
@@ -103,7 +103,7 @@ export const getTrendingMovies = async (): Promise<Movie[]> => {
     const res = await tmdb.get("/trending/movie/day");
     return res.data.results;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return mockMovies;
   }
 };
@@ -115,7 +115,7 @@ export const searchMulti = async (query: string): Promise<Movie[]> => {
     const res = await tmdb.get("/search/multi", { params: { query } });
     return res.data.results.filter((item: any) => item.media_type === "movie" || item.media_type === "tv");
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error:", err.message);
     return [];
   }
 };
@@ -133,11 +133,11 @@ export const getMovieDetails = async (id: number): Promise<MovieDetails | null> 
   }
   try {
     const res = await tmdb.get(`/movie/${id}`, {
-      params: { append_to_response: "credits,external_ids,similar" },
+      params: { append_to_response: "credits,external_ids,similar,videos" },
     });
     return res.data;
   } catch (err) {
-    console.error("TMDB API Error:", err);
+    console.warn("TMDB API Error: Could not fetch movie details.");
     return null;
   }
 };
@@ -145,7 +145,7 @@ export const getMovieDetails = async (id: number): Promise<MovieDetails | null> 
 export const getRatings = async (imdbId: string | null): Promise<Ratings> => {
   if (!OMDB_API_KEY || !imdbId) return { imdb: null, rottenTomatoes: null };
   try {
-    const res = await axios.get<OMDBResponse>(`https://www.omdbapi.com/`, {
+    const res = await axios.get<OMDbResponse>(`https://www.omdbapi.com/`, {
       params: { i: imdbId, apikey: OMDB_API_KEY },
     });
     
@@ -159,7 +159,7 @@ export const getRatings = async (imdbId: string | null): Promise<Ratings> => {
       rottenTomatoes,
     };
   } catch (err) {
-    console.error("OMDb API Error:", err);
+    console.warn("OMDb API Error: Could not fetch ratings. Invalid API key or network issue.");
     return { imdb: null, rottenTomatoes: null };
   }
 };

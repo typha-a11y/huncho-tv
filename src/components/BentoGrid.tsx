@@ -72,7 +72,7 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
           <div 
             key={movie.id}
             onClick={() => setSelectedMovieId(movie.id)}
-            className="snap-start shrink-0 w-[128px] xs:w-[145px] sm:w-[175px] md:w-[200px] flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white hover:scale-[1.02] transition-transform duration-200 ease-out"
+            className="snap-start shrink-0 w-[125px] xs:w-[145px] sm:w-[175px] flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white hover:scale-[1.02] transition-transform duration-200 ease-out"
           >
             <div className="aspect-[2/3] overflow-hidden">
               <img 

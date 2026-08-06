@@ -1,85 +1,154 @@
 import { Play, Plus, Check, Star, Flame } from "lucide-react";
 import { Movie } from "../types";
-import { getImageUrl } from "../lib/api";
 import { useStore } from "../lib/store";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { useState, useEffect, useRef } from "react";
 
-export function HeroBanner({ movie }: { movie: Movie | null }) {
+export function HeroBanner({ movies }: { movies: Movie[] }) {
   const { watchlist, addToWatchlist, removeFromWatchlist, setSelectedMovieId } = useStore();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  if (!movie) return <div className="w-full h-[60vh] bg-slate-100 animate-pulse rounded-3xl" />;
+  const topFive = movies.slice(0, 5);
+
+  useEffect(() => {
+    if (topFive.length === 0 || isHovered) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+    
+    timerRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % topFive.length);
+    }, 3000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [topFive.length, isHovered]);
+
+  const movie = topFive[currentIndex];
+
+  if (topFive.length === 0) return <div className="w-full min-h-[420px] xs:min-h-[460px] bg-slate-200 animate-pulse rounded-3xl" />;
 
   const isWatchlisted = watchlist.includes(movie.id);
+  const heroImageUrl = movie.backdrop_path 
+    ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` 
+    : `https://image.tmdb.org/t/p/w780${movie.poster_path}`;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl min-h-[320px] xs:min-h-[380px] md:min-h-[460px] h-[60vh] sm:h-[70vh] w-full group shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-200 ease-out">
-      <img
-        src={getImageUrl(movie.backdrop_path || movie.poster_path, "original")}
-        alt={movie.title}
-        className="absolute inset-0 object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
-      />
+    <div 
+      className="relative w-full min-h-[420px] xs:min-h-[460px] rounded-3xl overflow-hidden shadow-xl cursor-pointer group flex flex-col justify-end bg-black"
+      onClick={() => {
+        setSelectedMovieId(movie.id);
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <AnimatePresence mode="popLayout">
+        <motion.img
+          key={movie.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          src={heroImageUrl}
+          alt={movie.title}
+          className="absolute inset-0 w-full h-full object-cover object-top z-0"
+        />
+      </AnimatePresence>
       
-      {/* Light gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent" />
+      {/* Dark gradient overlay for bottom text */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent z-10" />
       
-      <div className="relative z-10 flex flex-col justify-end p-4 xs:p-6 md:p-8 h-full w-full">
-        <div className="max-w-2xl bg-white/70 backdrop-blur-md p-4 xs:p-5 sm:p-6 rounded-2xl border border-white/50 shadow-sm">
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-xl xs:text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-2 sm:mb-4 line-clamp-2"
-          >
-            {movie.title || movie.original_title}
-          </motion.h1>
+      <div className="relative z-20 p-5 flex flex-col gap-2">
+          <AnimatePresence mode="wait">
+            <motion.h1 
+              key={movie.id + "title"}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-xl xs:text-2xl sm:text-4xl font-black text-white drop-shadow-md"
+            >
+              {movie.title || movie.original_title}
+            </motion.h1>
+          </AnimatePresence>
           
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center gap-3 text-sm font-bold text-slate-700 mb-6"
-          >
-            <span className="px-2.5 py-1 rounded-md bg-white shadow-sm border border-slate-200 flex items-center gap-1">
-              <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> {movie.vote_average?.toFixed(1)} IMDb
-            </span>
-            <span className="px-2.5 py-1 rounded-md bg-white shadow-sm border border-slate-200 text-red-600 flex items-center gap-1">
-              <Flame className="w-4 h-4 text-red-500 fill-red-500" /> {(movie.vote_average * 10).toFixed(0)}%
-            </span>
-            <span className="w-1 h-1 rounded-full bg-slate-400 inline-block mx-1" />
-            <span>{movie.release_date?.slice(0, 4)}</span>
-          </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={movie.id + "meta"}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 text-xs text-slate-300 flex-wrap"
+            >
+              <span className="flex items-center gap-1 font-semibold">
+                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> {movie.vote_average?.toFixed(1)} IMDb
+              </span>
+              <span className="w-1 h-1 rounded-full bg-slate-500" />
+              <span className="flex items-center gap-1 font-semibold text-red-300">
+                <Flame className="w-3.5 h-3.5 text-red-400 fill-red-400" /> {(movie.vote_average * 10).toFixed(0)}%
+              </span>
+              <span className="w-1 h-1 rounded-full bg-slate-500" />
+              <span className="font-semibold">
+                {movie.release_date?.slice(0, 4)}
+              </span>
+            </motion.div>
+          </AnimatePresence>
           
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-slate-600 text-xs xs:text-sm line-clamp-2 mb-4 max-w-xl font-medium"
-          >
-            {movie.overview}
-          </motion.p>
+          <AnimatePresence mode="wait">
+            <motion.p 
+              key={movie.id + "overview"}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="hidden xs:block text-xs text-slate-300 line-clamp-1 sm:line-clamp-2 max-w-lg"
+            >
+              {movie.overview}
+            </motion.p>
+          </AnimatePresence>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap items-center gap-3 sm:gap-4"
-          >
-            <button 
-              onClick={() => setSelectedMovieId(movie.id)}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white min-h-[44px] px-4 py-2.5 text-xs xs:text-sm rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all hover:-translate-y-0.5"
-            >
-              <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-              Watch Now
-            </button>
-            <button 
-              onClick={() => isWatchlisted ? removeFromWatchlist(movie.id) : addToWatchlist(movie.id)}
-              className="flex items-center gap-2 bg-white/80 hover:bg-white backdrop-blur-md text-slate-900 min-h-[44px] px-4 py-2.5 text-xs xs:text-sm rounded-xl font-bold shadow-sm border border-slate-200/60 transition-all hover:-translate-y-0.5"
-            >
-              {isWatchlisted ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" /> : <Plus className="w-4 h-4 sm:w-5 sm:h-5" />}
-              {isWatchlisted ? "Added" : "Add to Library"}
-            </button>
-          </motion.div>
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMovieId(movie.id);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-0.5"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  Watch Now
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    isWatchlisted ? removeFromWatchlist(movie.id) : addToWatchlist(movie.id);
+                  }}
+                  className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white py-2 px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all hover:-translate-y-0.5 border border-white/10"
+                >
+                  {isWatchlisted ? <Check className="w-4 h-4 text-indigo-400" /> : <Plus className="w-4 h-4" />}
+                  {isWatchlisted ? "Added" : "Add"}
+                </button>
+              </div>
+              
+              {/* Pagination Dots */}
+              <div className="flex gap-1.5 pr-2">
+                {topFive.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentIndex(idx);
+                    }}
+                    className={`h-1.5 rounded-full transition-all ${idx === currentIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
     </div>
   );
 }

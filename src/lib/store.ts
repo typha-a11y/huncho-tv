@@ -14,7 +14,8 @@ interface AppState {
   setSelectedMovieId: (id: number | null) => void;
   
   isVideoPlayerOpen: boolean;
-  setVideoPlayerOpen: (isOpen: boolean) => void;
+  videoStreamUrl: string | null;
+  setVideoPlayerOpen: (isOpen: boolean, streamUrl?: string | null) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -42,7 +43,8 @@ export const useStore = create<AppState>()(
       setSelectedMovieId: (id) => set({ selectedMovieId: id }),
       
       isVideoPlayerOpen: false,
-      setVideoPlayerOpen: (isOpen) => set({ isVideoPlayerOpen: isOpen }),
+      videoStreamUrl: null,
+      setVideoPlayerOpen: (isOpen, streamUrl = null) => set({ isVideoPlayerOpen: isOpen, videoStreamUrl: streamUrl }),
     }),
     {
       name: "huncho-tv-storage",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Movie } from "../types";
 import { getMoviesByGenre, getPopularMovies, getTopRatedMovies, getUpcomingMovies, getNowPlayingMovies, getImageUrl } from "../lib/api";
 import { useStore } from "../lib/store";
@@ -8,13 +8,9 @@ export function MovieGrid({ category }: { category: number | string }) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const observerRef = useRef<IntersectionObserver | null>(null);
   const setSelectedMovieId = useStore((s) => s.setSelectedMovieId);
-
-  useEffect(() => {
-    setMovies([]);
-    setPage(1);
-    loadMovies(1);
-  }, [category]);
 
   const loadMovies = async (pageNum: number) => {
     setLoading(true);
@@ -31,15 +27,51 @@ export function MovieGrid({ category }: { category: number | string }) {
       newMovies = await getUpcomingMovies(pageNum);
     }
     
-    setMovies((prev) => (pageNum === 1 ? newMovies : [...prev, ...newMovies]));
+    if (newMovies.length === 0) {
+      setHasMore(false);
+    } else {
+      setMovies((prev) => (pageNum === 1 ? newMovies : [...prev, ...newMovies]));
+      setHasMore(newMovies.length > 0); // Assuming there's more if we got results, could check for a specific length like 20
+    }
     setLoading(false);
   };
 
-  const handleLoadMore = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    loadMovies(nextPage);
-  };
+  useEffect(() => {
+    setMovies([]);
+    setPage(1);
+    setHasMore(true);
+    loadMovies(1);
+  }, [category]);
+
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const target = entries[0];
+      if (target.isIntersecting && hasMore && !loading) {
+        setPage((prev) => {
+          const nextPage = prev + 1;
+          loadMovies(nextPage);
+          return nextPage;
+        });
+      }
+    },
+    [loading, hasMore, category]
+  );
+
+  const sentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loading) return;
+      if (observerRef.current) observerRef.current.disconnect();
+      
+      observerRef.current = new IntersectionObserver(handleObserver, {
+        root: null,
+        rootMargin: "20px",
+        threshold: 1.0,
+      });
+      
+      if (node) observerRef.current.observe(node);
+    },
+    [loading, handleObserver]
+  );
 
   if (!movies.length && loading) {
     return (
@@ -84,15 +116,18 @@ export function MovieGrid({ category }: { category: number | string }) {
         ))}
       </div>
 
-      <div className="mt-12 flex justify-center">
-        <button
-          onClick={handleLoadMore}
-          disabled={loading}
-          className="bg-white hover:bg-slate-50 text-slate-900 font-bold px-8 py-3 rounded-xl border border-slate-200 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? "Loading..." : "Load More"}
-        </button>
-      </div>
+      {hasMore && (
+        <div ref={sentinelRef} className="mt-12 flex justify-center py-4">
+          {loading && (
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          )}
+        </div>
+      )}
+      {!hasMore && (
+        <div className="mt-12 flex justify-center py-4 text-sm text-slate-500">
+          No more movies to load.
+        </div>
+      )}
     </div>
   );
 }
