@@ -44,7 +44,7 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
             <span className="px-2.5 py-1 rounded-md bg-white shadow-sm border border-slate-200 text-red-600 flex items-center gap-1">
               <Flame className="w-4 h-4 text-red-500 fill-red-500" /> {(movie.vote_average * 10).toFixed(0)}%
             </span>
-            <span>•</span>
+            <span className="w-1 h-1 rounded-full bg-slate-400 inline-block mx-1" />
             <span>{movie.release_date?.slice(0, 4)}</span>
           </motion.div>
           

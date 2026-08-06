@@ -89,7 +89,10 @@ export function Navbar() {
                     <div>
                       <h4 className="font-bold text-slate-900">{movie.title || movie.original_title}</h4>
                       <p className="text-sm text-slate-500 flex items-center gap-1">
-                        {movie.release_date?.slice(0, 4)} • <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> {movie.vote_average?.toFixed(1)}
+                        <span>{movie.release_date?.slice(0, 4)}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-400 inline-block mx-1" />
+                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                        <span>{movie.vote_average?.toFixed(1)}</span>
                       </p>
                     </div>
                   </div>
