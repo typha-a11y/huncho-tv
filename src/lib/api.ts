@@ -75,25 +75,94 @@ export const getUpcomingMovies = async (page = 1): Promise<Movie[]> => {
   }
 };
 
+const defaultGenres = [
+  { id: 28, name: "Action" },
+  { id: 12, name: "Adventure" },
+  { id: 16, name: "Animation" },
+  { id: 35, name: "Comedy" },
+  { id: 80, name: "Crime" },
+  { id: 99, name: "Documentary" },
+  { id: 18, name: "Drama" },
+  { id: 10751, name: "Family" },
+  { id: 14, name: "Fantasy" },
+  { id: 27, name: "Horror" },
+  { id: 10749, name: "Romance" },
+  { id: 878, name: "Sci-Fi" },
+  { id: 53, name: "Thriller" }
+];
+
 export const getGenres = async (): Promise<{id: number, name: string}[]> => {
-  if (!TMDB_API_KEY) return [{ id: 28, name: "Action" }, { id: 12, name: "Adventure" }, { id: 16, name: "Animation" }, { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }];
+  if (!TMDB_API_KEY) return defaultGenres;
   try {
     const res = await tmdb.get("/genre/movie/list");
-    return res.data.genres;
-  } catch (err) {
-    console.warn("TMDB API Error:", err.message);
-    return [];
+    return res.data.genres || defaultGenres;
+  } catch (err: any) {
+    console.warn("TMDB API Error:", err?.message || err);
+    return defaultGenres;
   }
 };
 
+export const genreNameMap: Record<number, string> = {
+  28: "Action",
+  12: "Adventure",
+  16: "Animation",
+  35: "Comedy",
+  80: "Crime",
+  99: "Documentary",
+  18: "Drama",
+  10751: "Family",
+  14: "Fantasy",
+  36: "History",
+  27: "Horror",
+  10402: "Music",
+  9648: "Mystery",
+  10749: "Romance",
+  878: "Sci-Fi",
+  10770: "TV Movie",
+  53: "Thriller",
+  10752: "War",
+  37: "Western",
+};
+
+export const getPrimaryGenre = (genreIds?: number[]): string | null => {
+  if (!genreIds || genreIds.length === 0) return null;
+  return genreNameMap[genreIds[0]] || null;
+};
+
+const createMockMoviesForGenre = (genreId: number, genreName: string): Movie[] => {
+  return Array.from({ length: 12 }).map((_, i) => ({
+    id: genreId * 1000 + i + 1,
+    title: `${genreName} Blockbuster ${i + 1}`,
+    original_title: `${genreName} Blockbuster ${i + 1}`,
+    overview: `An incredible ${genreName.toLowerCase()} film that takes viewers on a high-octane journey filled with compelling stories and dramatic twists.`,
+    poster_path: null,
+    backdrop_path: null,
+    release_date: `2024-0${(i % 9) + 1}-10`,
+    vote_average: Math.max(6.5, 9.2 - i * 0.25),
+    vote_count: 850 + i * 200,
+    genre_ids: [genreId],
+    media_type: "movie",
+  }));
+};
+
 export const getMoviesByGenre = async (genreId: number, page = 1): Promise<Movie[]> => {
-  if (!TMDB_API_KEY) return mockMovies;
+  if (!TMDB_API_KEY) {
+    const genreName = genreNameMap[genreId] || "Featured";
+    return createMockMoviesForGenre(genreId, genreName);
+  }
   try {
-    const res = await tmdb.get("/discover/movie", { params: { with_genres: genreId, page } });
+    const res = await tmdb.get("/discover/movie", { 
+      params: { 
+        with_genres: genreId, 
+        page,
+        sort_by: "popularity.desc" 
+      } 
+    });
     return res.data.results;
-  } catch (err) {
-    console.warn("TMDB API Error:", err.message);
-    return mockMovies;
+  } catch (err: any) {
+    console.warn("TMDB API Error:", err?.message || err);
+    const genreName = genreNameMap[genreId] || "Featured";
+    return createMockMoviesForGenre(genreId, genreName);
   }
 };
 

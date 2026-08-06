@@ -4,18 +4,23 @@
  */
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Bookmark } from "lucide-react";
 import { Navbar } from "./components/Navbar";
 import { HeroBanner } from "./components/HeroBanner";
 import { BentoGrid, CategoryCarousel } from "./components/BentoGrid";
 import { MovieDetailModal } from "./components/MovieDetailModal";
 import { VideoPlayerModal } from "./components/VideoPlayerModal";
 import { MovieGrid } from "./components/MovieGrid";
+import { WatchlistGrid } from "./components/WatchlistGrid";
+import { PullToRefresh } from "./components/PullToRefresh";
 import { 
   getTrendingMovies, 
   getPopularMovies, 
   getTopRatedMovies, 
   getUpcomingMovies,
-  getGenres
+  getGenres,
+  getMoviesByGenre
 } from "./lib/api";
 import { Movie, Genre } from "./types";
 import { cn } from "./lib/utils";
@@ -27,10 +32,33 @@ export default function App() {
   const [topRated, setTopRated] = useState<Movie[]>([]);
   const [upcoming, setUpcoming] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
+  const [heroMovies, setHeroMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [activeTab, setActiveTab] = useState<string | number>("home");
-  const { selectedMovieId } = useStore();
+  const { selectedMovieId, watchlist } = useStore();
+
+  const handleRefresh = async () => {
+    try {
+      const [trendingData, popularData, topRatedData, upcomingData, genresData] = await Promise.all([
+        getTrendingMovies(),
+        getPopularMovies(),
+        getTopRatedMovies(),
+        getUpcomingMovies(),
+        getGenres()
+      ]);
+      setTrending(trendingData);
+      setPopular(popularData);
+      setTopRated(topRatedData);
+      setUpcoming(upcomingData);
+      setGenres(genresData);
+      if (activeTab === "home" || activeTab === "discover") {
+        setHeroMovies(trendingData);
+      }
+    } catch (err) {
+      console.error("Failed to refresh movie data:", err);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -44,10 +72,29 @@ export default function App() {
       setPopular(popularData);
       setTopRated(topRatedData);
       setUpcoming(upcomingData);
-      setGenres([{ id: 0, name: "All" }, ...genresData]);
+      setGenres(genresData);
+      setHeroMovies(trendingData);
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "home" || activeTab === "discover") {
+      setHeroMovies(trending);
+    } else if (typeof activeTab === "number") {
+      getMoviesByGenre(activeTab, 1).then((genreMovies) => {
+        if (genreMovies && genreMovies.length > 0) {
+          setHeroMovies(genreMovies.slice(0, 10));
+        }
+      });
+    } else if (activeTab === "popular") {
+      setHeroMovies(popular);
+    } else if (activeTab === "top_rated") {
+      setHeroMovies(topRated);
+    } else if (activeTab === "upcoming") {
+      setHeroMovies(upcoming);
+    }
+  }, [activeTab, trending, popular, topRated, upcoming]);
 
   if (loading) {
     return (
@@ -58,81 +105,185 @@ export default function App() {
   }
 
   const trendingGrid = trending.slice(5, 10);
+  const activeGenreObj = genres.find((g) => g.id === activeTab);
+  const activeGenreName = activeGenreObj?.name;
+
+  const getBadgeText = () => {
+    if (activeTab === "home" || activeTab === "discover") return "Trending Now";
+    if (activeGenreName) return `Hot in ${activeGenreName}`;
+    if (activeTab === "popular") return "Most Popular";
+    if (activeTab === "top_rated") return "Top Rated";
+    if (activeTab === "upcoming") return "Upcoming Releases";
+    return "Top Picks";
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FB] text-slate-900 font-sans pb-20 overflow-x-hidden">
-      <Navbar />
-      
-      <main className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 pt-2 pb-4">
+      <PullToRefresh onRefresh={handleRefresh}>
+        <Navbar 
+          activeTab={activeTab}
+          onSelectDiscover={() => setActiveTab("home")} 
+          onSelectWatchlist={() => setActiveTab("watchlist")}
+        />
         
-        {/* Genre Filter Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-2 my-2 sticky top-16 z-30 bg-[#F8F9FB]/90 backdrop-blur-md">
+        <main className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 pt-2 pb-4">
+        
+        {/* Genre & Nav Filter Bar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-2.5 my-2 sticky top-16 z-30 bg-[#F8F9FB]/90 backdrop-blur-md">
+          <button
+            onClick={() => setActiveTab("home")}
+            className={cn(
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none",
+              activeTab === "home" || activeTab === "discover"
+                ? "text-white font-semibold" 
+                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
+            )}
+          >
+            {(activeTab === "home" || activeTab === "discover") && (
+              <motion.div
+                layoutId="activeGenrePill"
+                className="absolute inset-0 bg-indigo-600 rounded-full shadow-md shadow-indigo-500/25"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">Discover</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("watchlist")}
+            className={cn(
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              activeTab === "watchlist"
+                ? "text-white font-semibold" 
+                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
+            )}
+          >
+            {activeTab === "watchlist" && (
+              <motion.div
+                layoutId="activeGenrePill"
+                className="absolute inset-0 bg-indigo-600 rounded-full shadow-md shadow-indigo-500/25"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1">
+              <Bookmark className="w-3.5 h-3.5" />
+              Watchlist
+              {watchlist.length > 0 && (
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5",
+                  activeTab === "watchlist" ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"
+                )}>
+                  {watchlist.length}
+                </span>
+              )}
+            </span>
+          </button>
+          
+          {genres.map(genre => {
+            const isActive = activeTab === genre.id;
+            return (
               <button
-                onClick={() => setActiveTab("home")}
+                key={genre.id}
+                onClick={() => setActiveTab(genre.id)}
                 className={cn(
-                  "whitespace-nowrap transition-colors",
-                  activeTab === "home" 
-                    ? "bg-indigo-600 text-white font-semibold text-xs rounded-full px-4 py-1.5 shadow-sm" 
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs rounded-full px-4 py-1.5"
+                  "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none",
+                  isActive
+                    ? "text-white font-semibold" 
+                    : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
                 )}
               >
-                Discover
+                {isActive && (
+                  <motion.div
+                    layoutId="activeGenrePill"
+                    className="absolute inset-0 bg-indigo-600 rounded-full shadow-md shadow-indigo-500/25"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{genre.name}</span>
               </button>
-              
-              {genres.map(genre => (
-                <button
-                  key={genre.id}
-                  onClick={() => setActiveTab(genre.id === 0 ? "popular" : genre.id)}
-                  className={cn(
-                    "whitespace-nowrap transition-colors",
-                    activeTab === (genre.id === 0 ? "popular" : genre.id)
-                      ? "bg-indigo-600 text-white font-semibold text-xs rounded-full px-4 py-1.5 shadow-sm" 
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs rounded-full px-4 py-1.5"
-                  )}
-                >
-                  {genre.name}
-                </button>
-              ))}
-            </div>
+            );
+          })}
+        </div>
 
-            {activeTab === "home" ? (
-              <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
-                <HeroBanner movies={trending} />
-                
-                <BentoGrid title="Trending This Week" movies={trendingGrid} />
-                
-                <div className="pt-2">
-                  <div className="flex items-center justify-between mb-4">
-                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Popular Movies</h2>
-                     <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-sm">View All</button>
-                  </div>
-                  <CategoryCarousel title="" movies={popular} />
+        <AnimatePresence mode="wait">
+          {activeTab === "watchlist" ? (
+            <motion.div
+              key="watchlist"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <WatchlistGrid onExplore={() => setActiveTab("home")} />
+            </motion.div>
+          ) : activeTab === "home" || activeTab === "discover" ? (
+            <motion.div 
+              key="home-discover"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-6 sm:space-y-8"
+            >
+              <HeroBanner movies={heroMovies} badge={getBadgeText()} />
+              
+              <BentoGrid title="Trending This Week" movies={trendingGrid} />
+              
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-4">
+                   <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Popular Movies</h2>
+                   <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-sm cursor-pointer">View All</button>
                 </div>
-                
-                <div className="pt-2">
-                  <div className="flex items-center justify-between mb-4">
-                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Top Rated Classics</h2>
-                     <button onClick={() => setActiveTab("top_rated")} className="text-indigo-600 font-bold hover:underline text-sm">View All</button>
-                  </div>
-                  <CategoryCarousel title="" movies={topRated} />
-                </div>
-                
-                <div className="pt-2">
-                  <div className="flex items-center justify-between mb-4">
-                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Upcoming Releases</h2>
-                     <button onClick={() => setActiveTab("upcoming")} className="text-indigo-600 font-bold hover:underline text-sm">View All</button>
-                  </div>
-                  <CategoryCarousel title="" movies={upcoming} />
-                </div>
+                <CategoryCarousel title="" movies={popular} />
               </div>
-            ) : (
-              <MovieGrid category={activeTab} />
-            )}
-          </main>
+              
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-4">
+                   <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Top Rated Classics</h2>
+                   <button onClick={() => setActiveTab("top_rated")} className="text-indigo-600 font-bold hover:underline text-sm cursor-pointer">View All</button>
+                </div>
+                <CategoryCarousel title="" movies={topRated} />
+              </div>
+              
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-4">
+                   <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Upcoming Releases</h2>
+                   <button onClick={() => setActiveTab("upcoming")} className="text-indigo-600 font-bold hover:underline text-sm cursor-pointer">View All</button>
+                </div>
+                <CategoryCarousel title="" movies={upcoming} />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key={`category-${activeTab}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-6"
+            >
+              <HeroBanner movies={heroMovies} badge={getBadgeText()} />
+
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">
+                    {activeGenreName ? `${activeGenreName} Movies` : `${String(activeTab).replace('_', ' ').toUpperCase()} Movies`}
+                  </h2>
+                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200/50">
+                    Popularity Ranked
+                  </span>
+                </div>
+                
+                <MovieGrid category={activeTab} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+      </PullToRefresh>
 
       {selectedMovieId && <MovieDetailModal />}
       <VideoPlayerModal />
     </div>
   );
 }
-

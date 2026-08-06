@@ -1,14 +1,23 @@
 import { useState, useEffect } from "react";
-import { Search, User, PlayCircle, X, Star } from "lucide-react";
+import { Search, User, PlayCircle, X, Star, Settings, Bookmark } from "lucide-react";
 import { searchMulti, getImageUrl } from "../lib/api";
 import { Movie } from "../types";
 import { useStore } from "../lib/store";
+import { SettingsModal } from "./SettingsModal";
 
-export function Navbar() {
+interface NavbarProps {
+  onSelectDiscover?: () => void;
+  onSelectWatchlist?: () => void;
+  activeTab?: string | number;
+}
+
+export function Navbar({ onSelectDiscover, onSelectWatchlist, activeTab }: NavbarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const setSelectedMovieId = useStore((s) => s.setSelectedMovieId);
+  const watchlist = useStore((s) => s.watchlist);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -25,31 +34,65 @@ export function Navbar() {
     <>
       <nav className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer">
+          <div onClick={onSelectDiscover} className="flex items-center gap-2 cursor-pointer">
             <PlayCircle className="w-8 h-8 text-indigo-500" />
             <span className="text-xl font-bold text-slate-900 tracking-tight">HUNCHO TV</span>
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <a href="#" className="hover:text-indigo-600 transition-colors">Discover</a>
-            <a href="#" className="hover:text-indigo-600 transition-colors">Genres</a>
-            <a href="#" className="hover:text-indigo-600 transition-colors">Watchlist</a>
+            <button 
+              onClick={onSelectDiscover} 
+              className={`hover:text-indigo-600 transition-colors cursor-pointer ${activeTab === 'home' || activeTab === 'discover' ? 'text-indigo-600 font-bold' : ''}`}
+            >
+              Discover
+            </button>
+            <button 
+              onClick={onSelectWatchlist} 
+              className={`hover:text-indigo-600 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'watchlist' ? 'text-indigo-600 font-bold' : ''}`}
+            >
+              <span>My Watchlist</span>
+              {watchlist.length > 0 && (
+                <span className="text-[10px] font-extrabold bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded-full">
+                  {watchlist.length}
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={onSelectWatchlist}
+              className={`p-2 rounded-full transition-colors relative cursor-pointer ${
+                activeTab === 'watchlist' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'
+              }`}
+              title="My Watchlist"
+            >
+              <Bookmark className="w-5 h-5" />
+              {watchlist.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-600 border border-white" />
+              )}
+            </button>
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors flex items-center gap-2"
+              className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors flex items-center gap-2 cursor-pointer"
+              title="Search"
             >
               <Search className="w-5 h-5" />
               <span className="hidden md:inline text-sm font-medium border border-slate-200 px-2 py-0.5 rounded-md bg-white">⌘ K</span>
             </button>
-            <button className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors">
-              <User className="w-5 h-5" />
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors cursor-pointer"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5" />
             </button>
           </div>
         </div>
       </nav>
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       {/* Search Modal */}
       {isSearchOpen && (

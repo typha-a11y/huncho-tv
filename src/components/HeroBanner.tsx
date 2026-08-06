@@ -4,13 +4,17 @@ import { useStore } from "../lib/store";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useRef } from "react";
 
-export function HeroBanner({ movies }: { movies: Movie[] }) {
+export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string }) {
   const { watchlist, addToWatchlist, removeFromWatchlist, setSelectedMovieId } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const topFive = movies.slice(0, 5);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [movies]);
 
   useEffect(() => {
     if (topFive.length === 0 || isHovered) {
@@ -62,6 +66,12 @@ export function HeroBanner({ movies }: { movies: Movie[] }) {
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent z-10" />
       
       <div className="relative z-20 p-5 flex flex-col gap-2">
+          {badge && (
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/60 backdrop-blur-md rounded-full text-white text-[10px] font-bold w-fit shadow-sm border border-amber-300/40">
+              <Flame className="w-3 h-3 fill-current text-amber-200" />
+              <span>{badge}</span>
+            </div>
+          )}
           <AnimatePresence mode="wait">
             <motion.h1 
               key={movie.id + "title"}

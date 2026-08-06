@@ -1,8 +1,30 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Movie } from "../types";
-import { getMoviesByGenre, getPopularMovies, getTopRatedMovies, getUpcomingMovies, getNowPlayingMovies, getImageUrl } from "../lib/api";
+import { getMoviesByGenre, getPopularMovies, getTopRatedMovies, getUpcomingMovies, getNowPlayingMovies, getImageUrl, getPrimaryGenre } from "../lib/api";
 import { useStore } from "../lib/store";
 import { Star } from "lucide-react";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 18, scale: 0.96 },
+  show: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: { type: "spring", stiffness: 300, damping: 24 } 
+  }
+};
 
 export function MovieGrid({ category }: { category: number | string }) {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -31,7 +53,7 @@ export function MovieGrid({ category }: { category: number | string }) {
       setHasMore(false);
     } else {
       setMovies((prev) => (pageNum === 1 ? newMovies : [...prev, ...newMovies]));
-      setHasMore(newMovies.length > 0); // Assuming there's more if we got results, could check for a specific length like 20
+      setHasMore(newMovies.length > 0);
     }
     setLoading(false);
   };
@@ -76,45 +98,64 @@ export function MovieGrid({ category }: { category: number | string }) {
   if (!movies.length && loading) {
     return (
       <div className="py-20 flex justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"
+        />
       </div>
     );
   }
 
   return (
-    <div className="py-4 animate-in fade-in duration-500">
-      <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4">
-        {movies.map((movie) => (
-          <div
-            key={movie.id}
-            onClick={() => setSelectedMovieId(movie.id)}
-            className="group cursor-pointer rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 bg-white hover:scale-[1.02] transition-transform duration-200 ease-out flex flex-col"
-          >
-            <div className="aspect-[2/3] overflow-hidden bg-slate-100">
-              <img
-                src={getImageUrl(movie.poster_path, "w500")}
-                alt={movie.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-              />
-            </div>
-            <div className="p-2 xs:p-3 flex flex-col flex-1">
-              <h4 className="text-xs xs:text-sm font-semibold text-slate-900 line-clamp-1 mt-1.5 leading-tight">
-                {movie.title || movie.original_title}
-              </h4>
-              <div className="flex items-center justify-between mt-auto pt-2">
-                <span className="text-[10px] xs:text-xs text-slate-500 flex items-center gap-1">
-                  {movie.release_date?.slice(0, 4)}
-                </span>
-                <span className="text-[10px] xs:text-xs text-slate-500 flex items-center gap-1 font-bold">
-                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                  {movie.vote_average?.toFixed(1)}
-                </span>
+    <div className="py-4">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4"
+      >
+        <AnimatePresence mode="popLayout">
+          {movies.map((movie) => (
+            <motion.div
+              key={movie.id}
+              variants={cardVariants}
+              whileHover={{ y: -5, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setSelectedMovieId(movie.id)}
+              className="group cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/60 bg-white transition-shadow duration-200 ease-out flex flex-col"
+            >
+              <div className="aspect-[2/3] overflow-hidden bg-slate-100 relative">
+                <img
+                  src={getImageUrl(movie.poster_path, "w500")}
+                  alt={movie.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                {getPrimaryGenre(movie.genre_ids) && (
+                  <span className="absolute top-1.5 left-1.5 px-1 py-[1px] bg-slate-900/65 backdrop-blur-md text-white text-[7px] font-semibold rounded-[3px] border border-white/20 leading-none shadow-xs">
+                    {getPrimaryGenre(movie.genre_ids)}
+                  </span>
+                )}
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+              <div className="p-2 xs:p-3 flex flex-col flex-1">
+                <h4 className="text-xs xs:text-sm font-semibold text-slate-900 line-clamp-1 mt-1.5 leading-tight">
+                  {movie.title || movie.original_title}
+                </h4>
+                <div className="flex items-center justify-between mt-auto pt-2">
+                  <span className="text-[10px] xs:text-xs text-slate-500 flex items-center gap-1">
+                    {movie.release_date?.slice(0, 4)}
+                  </span>
+                  <span className="text-[10px] xs:text-xs text-slate-500 flex items-center gap-1 font-bold">
+                    <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    {movie.vote_average?.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
 
       {hasMore && (
         <div ref={sentinelRef} className="mt-12 flex justify-center py-4">
