@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Play, Plus, Check } from "lucide-react";
+import { X, Play, Plus, Check, Star, Flame } from "lucide-react";
 import { useStore } from "../lib/store";
 import { getMovieDetails, getRatings, getImageUrl } from "../lib/api";
 import { MovieDetails, Ratings } from "../types";
@@ -83,12 +83,12 @@ export function MovieDetailModal() {
                   )}
                   {ratings.imdb && (
                     <span className="px-3 py-1 bg-[#F5C518]/20 text-[#8B7005] rounded-full text-xs font-bold border border-[#F5C518]/30 flex items-center gap-1">
-                      â­  {ratings.imdb} IMDb
+                      <Star className="w-3 h-3 text-[#8B7005] fill-[#8B7005]" /> {ratings.imdb} IMDb
                     </span>
                   )}
                   {ratings.rottenTomatoes && (
                     <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold border border-red-200 flex items-center gap-1">
-                      ðŸ … {ratings.rottenTomatoes}
+                      <Flame className="w-3 h-3 text-red-700 fill-red-700" /> {ratings.rottenTomatoes}
                     </span>
                   )}
                   {movie.genres?.map(g => (

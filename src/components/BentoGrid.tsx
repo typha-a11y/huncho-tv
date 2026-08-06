@@ -1,3 +1,4 @@
+import { Star } from "lucide-react";
 import { Movie } from "../types";
 import { getImageUrl } from "../lib/api";
 import { useStore } from "../lib/store";
@@ -83,7 +84,9 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
             </div>
             <div className="p-3">
               <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{movie.title || movie.original_title}</h4>
-              <p className="text-slate-500 text-xs mt-1 font-medium">â­  {movie.vote_average?.toFixed(1)}</p>
+              <p className="text-slate-500 text-xs mt-1 font-medium flex items-center gap-1">
+                <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> {movie.vote_average?.toFixed(1)}
+              </p>
             </div>
           </div>
         ))}

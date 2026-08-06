@@ -1,4 +1,4 @@
-import { Play, Plus, Check } from "lucide-react";
+import { Play, Plus, Check, Star, Flame } from "lucide-react";
 import { Movie } from "../types";
 import { getImageUrl } from "../lib/api";
 import { useStore } from "../lib/store";
@@ -38,13 +38,13 @@ export function HeroBanner({ movie }: { movie: Movie | null }) {
             transition={{ delay: 0.1 }}
             className="flex items-center gap-3 text-sm font-bold text-slate-700 mb-6"
           >
-            <span className="px-2.5 py-1 rounded-md bg-white shadow-sm border border-slate-200">
-              â­  {movie.vote_average?.toFixed(1)} IMDb
+            <span className="px-2.5 py-1 rounded-md bg-white shadow-sm border border-slate-200 flex items-center gap-1">
+              <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> {movie.vote_average?.toFixed(1)} IMDb
             </span>
-            <span className="px-2.5 py-1 rounded-md bg-white shadow-sm border border-slate-200 text-red-600">
-              ðŸ… {(movie.vote_average * 10).toFixed(0)}%
+            <span className="px-2.5 py-1 rounded-md bg-white shadow-sm border border-slate-200 text-red-600 flex items-center gap-1">
+              <Flame className="w-4 h-4 text-red-500 fill-red-500" /> {(movie.vote_average * 10).toFixed(0)}%
             </span>
-            <span>â€¢</span>
+            <span>•</span>
             <span>{movie.release_date?.slice(0, 4)}</span>
           </motion.div>
           

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, User, PlayCircle, X } from "lucide-react";
+import { Search, User, PlayCircle, X, Star } from "lucide-react";
 import { searchMulti, getImageUrl } from "../lib/api";
 import { Movie } from "../types";
 import { useStore } from "../lib/store";
@@ -42,7 +42,7 @@ export function Navbar() {
               className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors flex items-center gap-2"
             >
               <Search className="w-5 h-5" />
-              <span className="hidden md:inline text-sm font-medium border border-slate-200 px-2 py-0.5 rounded-md bg-white">â K</span>
+              <span className="hidden md:inline text-sm font-medium border border-slate-200 px-2 py-0.5 rounded-md bg-white">⌘ K</span>
             </button>
             <button className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors">
               <User className="w-5 h-5" />
@@ -88,7 +88,9 @@ export function Navbar() {
                     />
                     <div>
                       <h4 className="font-bold text-slate-900">{movie.title || movie.original_title}</h4>
-                      <p className="text-sm text-slate-500">{movie.release_date?.slice(0, 4)} â¢ â­ {movie.vote_average?.toFixed(1)}</p>
+                      <p className="text-sm text-slate-500 flex items-center gap-1">
+                        {movie.release_date?.slice(0, 4)} • <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> {movie.vote_average?.toFixed(1)}
+                      </p>
                     </div>
                   </div>
                 ))
