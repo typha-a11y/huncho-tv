@@ -9,7 +9,7 @@ import { getMovieDetails } from "../lib/api";
 const TEST_STREAM = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
 
 export function VideoPlayerModal() {
-  const { isVideoPlayerOpen, setVideoPlayerOpen, selectedMovieId, videoStreamUrl } = useStore();
+  const { isVideoPlayerOpen, setVideoPlayerOpen, selectedMovieId, videoStreamUrl, videoStreamTitle } = useStore();
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -55,36 +55,59 @@ export function VideoPlayerModal() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (selectedMovieId) {
+    if (videoStreamTitle) {
+      setTitle(videoStreamTitle);
+    } else if (selectedMovieId) {
       getMovieDetails(selectedMovieId).then(data => {
         if (data) setTitle(data.title || data.original_title);
       });
     }
-  }, [selectedMovieId]);
+  }, [selectedMovieId, videoStreamTitle]);
 
   useEffect(() => {
     if (!isVideoPlayerOpen || !videoRef.current) return;
 
     const video = videoRef.current;
     let hls: Hls | null = null;
+    let isCancelled = false;
     const streamToLoad = videoStreamUrl || TEST_STREAM;
+
+    const safePlay = () => {
+      if (isCancelled) return;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          if (error?.name === "AbortError" || error?.message?.includes("interrupted") || error?.message?.includes("pause")) {
+            // Interrupted by new load or pause request, safe to ignore
+            return;
+          }
+          console.warn("Autoplay was prevented or interrupted:", error);
+        });
+      }
+    };
 
     if (Hls.isSupported()) {
       hls = new Hls();
       hls.loadSource(streamToLoad);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(console.error);
+        safePlay();
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = streamToLoad;
-      video.addEventListener("loadedmetadata", () => {
-        video.play().catch(console.error);
-      });
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          safePlay();
+        },
+        { once: true }
+      );
     }
 
     return () => {
+      isCancelled = true;
       if (hls) hls.destroy();
+      video.pause();
     };
   }, [isVideoPlayerOpen, videoStreamUrl]);
 
@@ -116,8 +139,19 @@ export function VideoPlayerModal() {
 
   const togglePlay = () => {
     if (videoRef.current) {
-      if (isPlaying) videoRef.current.pause();
-      else videoRef.current.play();
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            if (error?.name === "AbortError" || error?.message?.includes("interrupted") || error?.message?.includes("pause")) {
+              return;
+            }
+            console.warn("Toggle play error:", error);
+          });
+        }
+      }
     }
   };
 

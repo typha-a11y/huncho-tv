@@ -64,3 +64,61 @@ export interface WatchHistoryItem {
   duration: number;
   updatedAt: number;
 }
+
+export interface DownloadSource {
+  id: string;
+  source: "YTS" | "Web Scraper" | "Internet Archive" | "Direct Cloud";
+  quality: string;
+  type: "torrent" | "magnet" | "direct";
+  url: string;
+  size: string;
+  seeds?: number;
+  peers?: number;
+  format?: string;
+  hash?: string;
+}
+
+export interface DownloadResolverResult {
+  title: string;
+  imdbId: string | null;
+  sources: DownloadSource[];
+  activeSourceType: "YTS" | "Web Scraper" | "Internet Archive" | "Direct Cloud" | null;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  is_pro?: boolean;
+  created_at?: string;
+}
+
+export interface UserDownloadItem {
+  id: string;
+  movie_id: string;
+  title: string;
+  poster_path: string | null;
+  quality: string;
+  file_size: string;
+  download_url: string;
+  downloaded_at: string;
+  duration?: string;
+  source_type?: "Local Files" | "Received" | "Cloud";
+}
+
+export interface ZilizotafsiriwaMovie {
+  id: string;
+  title: string;
+  originalTitle?: string;
+  djName: string;            // e.g., "DJ Afro", "DJ Murphy", "DJ Mack", "DJ Rufus"
+  posterUrl: string;
+  backdropUrl?: string;
+  releaseYear: number;
+  streamUrl: string;          // Direct video/HLS stream URL or drive embed
+  downloadUrl?: string;        // Direct download URL provided by admin
+  fileSize?: string;          // e.g., "650 MB"
+  quality?: string;           // e.g., "720p HD"
+  synopsis?: string;
+}
+

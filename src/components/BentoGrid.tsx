@@ -46,7 +46,7 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
         <div className="grid grid-cols-2 md:grid-cols-1 gap-3 sm:gap-4 h-48 sm:h-64 md:h-80">
           {movies.slice(1, 3).map((movie, idx) => (
             <motion.div 
-              key={movie.id}
+              key={`${movie.id}-${idx}`}
               whileHover={{ y: -3, scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -91,7 +91,7 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
       <div className="snap-x snap-mandatory overflow-x-auto hide-scrollbar flex gap-3 px-4 -mx-4 pb-4">
         {movies.map((movie, index) => (
           <motion.div 
-            key={movie.id}
+            key={`${movie.id}-${index}`}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.3) }}

@@ -45,11 +45,19 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
     }
 
     setLoading(true);
-    Promise.all(watchlist.map((id) => getMovieDetails(id)))
+    const uniqueIds = Array.from(new Set(watchlist));
+    Promise.all(uniqueIds.map((id) => getMovieDetails(id)))
       .then((results) => {
         if (isMounted) {
-          // Filter out nulls if any fetch failed
-          setMovies(results.filter((m): m is MovieDetails => m !== null));
+          // Filter out nulls if any fetch failed and keep unique
+          const validMovies = results.filter((m): m is MovieDetails => m !== null);
+          const seen = new Set<number>();
+          const uniqueMovies = validMovies.filter((m) => {
+            if (seen.has(m.id)) return false;
+            seen.add(m.id);
+            return true;
+          });
+          setMovies(uniqueMovies);
           setLoading(false);
         }
       })
@@ -122,11 +130,11 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
         className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4"
       >
         <AnimatePresence mode="popLayout">
-          {movies.map((movie) => {
+          {movies.map((movie, index) => {
             const genreName = getPrimaryGenre(movie.genre_ids) || (movie.genres?.[0]?.name);
             return (
               <motion.div
-                key={movie.id}
+                key={`${movie.id}-${index}`}
                 variants={cardVariants}
                 layout
                 whileHover={{ y: -4, scale: 1.02 }}

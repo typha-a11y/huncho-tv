@@ -5,12 +5,17 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Download, User as UserIcon, Flame } from "lucide-react";
 import { Navbar } from "./components/Navbar";
 import { HeroBanner } from "./components/HeroBanner";
 import { BentoGrid, CategoryCarousel } from "./components/BentoGrid";
 import { MovieDetailModal } from "./components/MovieDetailModal";
 import { VideoPlayerModal } from "./components/VideoPlayerModal";
+import { DownloadModal } from "./components/DownloadModal";
+import { AuthModal } from "./components/AuthModal";
+import { ProfileView } from "./components/ProfileView";
+import { DownloadsView } from "./components/DownloadsView";
+import { ZilizotafsiriwaView } from "./components/ZilizotafsiriwaView";
 import { MovieGrid } from "./components/MovieGrid";
 import { WatchlistGrid } from "./components/WatchlistGrid";
 import { PullToRefresh } from "./components/PullToRefresh";
@@ -36,7 +41,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   
   const [activeTab, setActiveTab] = useState<string | number>("home");
-  const { selectedMovieId, watchlist } = useStore();
+  const { selectedMovieId, watchlist, downloads, user } = useStore();
 
   const handleRefresh = async () => {
     try {
@@ -123,7 +128,10 @@ export default function App() {
         <Navbar 
           activeTab={activeTab}
           onSelectDiscover={() => setActiveTab("home")} 
+          onSelectZilizotafsiriwa={() => setActiveTab("zilizotafsiriwa")}
           onSelectWatchlist={() => setActiveTab("watchlist")}
+          onSelectDownloads={() => setActiveTab("downloads")}
+          onSelectProfile={() => setActiveTab("profile")}
         />
         
         <main className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 pt-2 pb-4">
@@ -147,6 +155,34 @@ export default function App() {
               />
             )}
             <span className="relative z-10">Discover</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("zilizotafsiriwa")}
+            className={cn(
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-bold text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              activeTab === "zilizotafsiriwa"
+                ? "text-white font-extrabold" 
+                : "text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900"
+            )}
+          >
+            {activeTab === "zilizotafsiriwa" && (
+              <motion.div
+                layoutId="activeGenrePill"
+                className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full shadow-md shadow-purple-500/25"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1">
+              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              Zilizotafsiriwa
+              <span className={cn(
+                "text-[10px] font-black px-1.5 py-0.2 rounded-full ml-0.5",
+                activeTab === "zilizotafsiriwa" ? "bg-amber-400 text-slate-950" : "bg-purple-200 text-purple-900"
+              )}>
+                HOT
+              </span>
+            </span>
           </button>
 
           <button
@@ -178,6 +214,61 @@ export default function App() {
               )}
             </span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("downloads")}
+            className={cn(
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              activeTab === "downloads"
+                ? "text-white font-semibold" 
+                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
+            )}
+          >
+            {activeTab === "downloads" && (
+              <motion.div
+                layoutId="activeGenrePill"
+                className="absolute inset-0 bg-indigo-600 rounded-full shadow-md shadow-indigo-500/25"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1">
+              <Download className="w-3.5 h-3.5" />
+              Downloads
+              {downloads.length > 0 && (
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5",
+                  activeTab === "downloads" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+                )}>
+                  {downloads.length}
+                </span>
+              )}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("profile")}
+            className={cn(
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              activeTab === "profile"
+                ? "text-white font-semibold" 
+                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
+            )}
+          >
+            {activeTab === "profile" && (
+              <motion.div
+                layoutId="activeGenrePill"
+                className="absolute inset-0 bg-indigo-600 rounded-full shadow-md shadow-indigo-500/25"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1">
+              <UserIcon className="w-3.5 h-3.5" />
+              Profile
+              {user && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-0.5" />
+              )}
+            </span>
+          </button>
           
           {genres.map(genre => {
             const isActive = activeTab === genre.id;
@@ -206,7 +297,17 @@ export default function App() {
         </div>
 
         <AnimatePresence mode="wait">
-          {activeTab === "watchlist" ? (
+          {activeTab === "zilizotafsiriwa" ? (
+            <motion.div
+              key="zilizotafsiriwa"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <ZilizotafsiriwaView onExplore={() => setActiveTab("home")} />
+            </motion.div>
+          ) : activeTab === "watchlist" ? (
             <motion.div
               key="watchlist"
               initial={{ opacity: 0, y: 12 }}
@@ -215,6 +316,26 @@ export default function App() {
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
               <WatchlistGrid onExplore={() => setActiveTab("home")} />
+            </motion.div>
+          ) : activeTab === "downloads" ? (
+            <motion.div
+              key="downloads"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <DownloadsView onExplore={() => setActiveTab("home")} />
+            </motion.div>
+          ) : activeTab === "profile" ? (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <ProfileView onNavigateTab={(tab) => setActiveTab(tab)} />
             </motion.div>
           ) : activeTab === "home" || activeTab === "discover" ? (
             <motion.div 
@@ -284,6 +405,9 @@ export default function App() {
 
       {selectedMovieId && <MovieDetailModal />}
       <VideoPlayerModal />
+      <DownloadModal />
+      <AuthModal />
     </div>
   );
 }
+

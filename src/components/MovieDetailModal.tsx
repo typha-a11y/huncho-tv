@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, Play, Plus, Check, Star, Flame, Youtube, X, Share2, Clock, Calendar, UserCheck } from "lucide-react";
+import { ChevronLeft, Play, Plus, Check, Star, Flame, Youtube, X, Share2, Clock, Calendar, UserCheck, Film, Download } from "lucide-react";
 import { useStore } from "../lib/store";
 import { getMovieDetails, getRatings, getImageUrl, getPrimaryGenre } from "../lib/api";
 import { MovieDetails, Ratings } from "../types";
@@ -7,12 +7,51 @@ import { motion, AnimatePresence } from "motion/react";
 import { formatTime } from "../lib/utils";
 
 export function MovieDetailModal() {
-  const { selectedMovieId, setSelectedMovieId, setVideoPlayerOpen, watchlist, addToWatchlist, removeFromWatchlist } = useStore();
+  const { 
+    selectedMovieId, 
+    setSelectedMovieId, 
+    setVideoPlayerOpen, 
+    watchlist, 
+    addToWatchlist, 
+    removeFromWatchlist,
+    autoPlayTrailer,
+    toggleAutoPlayTrailer,
+    openDownloadModal,
+    checkAuthGuard,
+  } = useStore();
+
   const [movie, setMovie] = useState<MovieDetails | null>(null);
   const [ratings, setRatings] = useState<Ratings>({ imdb: null, rottenTomatoes: null });
   const [loading, setLoading] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const handleDownload = () => {
+    if (!movie) return;
+    if (!checkAuthGuard("Download Movie")) return;
+    const releaseYear = movie.release_date ? movie.release_date.slice(0, 4) : undefined;
+    openDownloadModal(
+      movie.title || movie.original_title,
+      movie.external_ids?.imdb_id || null,
+      movie.id,
+      releaseYear
+    );
+  };
+
+  const handlePlayStream = () => {
+    if (!checkAuthGuard("Resume Stream")) return;
+    setVideoPlayerOpen(true);
+  };
+
+  const handleToggleWatchlist = () => {
+    if (!movie) return;
+    if (!isWatchlisted) {
+      if (!checkAuthGuard("Add to Watchlist")) return;
+      addToWatchlist(movie.id);
+    } else {
+      removeFromWatchlist(movie.id);
+    }
+  };
 
   useEffect(() => {
     if (selectedMovieId) {
@@ -26,9 +65,19 @@ export function MovieDetailModal() {
           getRatings(data.external_ids.imdb_id).then(setRatings);
         }
         setLoading(false);
+
+        // Auto-play trailer if enabled and trailer exists
+        if (autoPlayTrailer) {
+          const trailer = data?.videos?.results?.find(
+            (v) => v.site === "YouTube" && v.type === "Trailer"
+          ) || data?.videos?.results?.find((v) => v.site === "YouTube");
+          if (trailer) {
+            setShowTrailer(true);
+          }
+        }
       });
     }
-  }, [selectedMovieId]);
+  }, [selectedMovieId, autoPlayTrailer]);
 
   const handleShare = async () => {
     if (!movie) return;
@@ -90,13 +139,29 @@ export function MovieDetailModal() {
               {movie ? (movie.title || movie.original_title) : "Movie Details"}
             </h1>
 
-            <button
-              onClick={handleShare}
-              className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-              title="Share Movie"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleAutoPlayTrailer}
+                className={`px-2 py-1 xs:px-2.5 xs:py-1 rounded-full text-[10px] xs:text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+                  autoPlayTrailer
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80 shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200/60'
+                }`}
+                title={autoPlayTrailer ? "Auto-play trailer is ON" : "Auto-play trailer is OFF"}
+              >
+                <Film className={`w-3.5 h-3.5 ${autoPlayTrailer ? 'text-indigo-600' : 'text-slate-500'}`} />
+                <span className="hidden sm:inline">Auto-play:</span>
+                <span className="font-bold">{autoPlayTrailer ? "ON" : "OFF"}</span>
+              </button>
+
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                title="Share Movie"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            </div>
           </header>
 
           {loading ? (
@@ -181,8 +246,8 @@ export function MovieDetailModal() {
                       <Flame className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> {ratings.rottenTomatoes}
                     </span>
                   )}
-                  {movie.genres?.map(g => (
-                    <span key={g.id} className="bg-indigo-50 text-indigo-700 border border-indigo-100/80 text-[11px] xs:text-xs font-semibold px-2.5 py-1 rounded-lg">
+                  {movie.genres?.map((g, idx) => (
+                    <span key={`${g.id}-${idx}`} className="bg-indigo-50 text-indigo-700 border border-indigo-100/80 text-[11px] xs:text-xs font-semibold px-2.5 py-1 rounded-lg">
                       {g.name}
                     </span>
                   ))}
@@ -193,7 +258,7 @@ export function MovieDetailModal() {
               <div className="px-4 xs:px-6 mb-8 space-y-2.5">
                 {/* Full-width Main Play Stream Button */}
                 <button 
-                  onClick={() => setVideoPlayerOpen(true)}
+                  onClick={handlePlayStream}
                   className="w-full h-12 text-sm font-bold rounded-xl flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <Play className="w-5 h-5 fill-current" />
@@ -217,7 +282,7 @@ export function MovieDetailModal() {
                   )}
 
                   <button 
-                    onClick={() => isWatchlisted ? removeFromWatchlist(movie.id) : addToWatchlist(movie.id)}
+                    onClick={handleToggleWatchlist}
                     className={`h-10 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 border transition-colors cursor-pointer ${
                       isWatchlisted 
                         ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
@@ -240,6 +305,15 @@ export function MovieDetailModal() {
                     <span>{copied ? "Copied!" : "Share"}</span>
                   </button>
                 </div>
+
+                {/* Download Button */}
+                <button 
+                  onClick={handleDownload}
+                  className="w-full h-11 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 border border-indigo-200/80 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-900 transition-all cursor-pointer active:scale-[0.98] shadow-xs"
+                >
+                  <Download className="w-4 h-4 text-indigo-600" />
+                  <span>Download Movie</span>
+                </button>
               </div>
 
               {/* Storyline Section */}
@@ -255,8 +329,8 @@ export function MovieDetailModal() {
                 <div className="mb-8">
                   <h3 className="text-base xs:text-lg font-bold text-slate-900 px-4 xs:px-6 mb-3">Top Cast</h3>
                   <div className="flex gap-3 xs:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-none px-4 xs:px-6 py-1 hide-scrollbar">
-                    {movie.credits.cast.slice(0, 10).map((actor) => (
-                      <div key={actor.id} className="flex-none w-18 xs:w-22 text-center snap-start">
+                    {movie.credits.cast.slice(0, 10).map((actor, idx) => (
+                      <div key={`${actor.id}-${idx}`} className="flex-none w-18 xs:w-22 text-center snap-start">
                         <div className="w-14 h-14 xs:w-16 xs:h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-indigo-500/20 mx-auto mb-1.5 shadow-xs flex items-center justify-center">
                           {actor.profile_path ? (
                             <img 
@@ -281,11 +355,11 @@ export function MovieDetailModal() {
                 <div className="mb-6">
                   <h3 className="text-base xs:text-lg font-bold text-slate-900 px-4 xs:px-6 mb-3">Similar Movies</h3>
                   <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none px-4 xs:px-6 hide-scrollbar">
-                    {movie.similar.results.map((similarMovie) => {
+                    {movie.similar.results.map((similarMovie, idx) => {
                       const genreName = getPrimaryGenre(similarMovie.genre_ids);
                       return (
                         <div 
-                          key={similarMovie.id} 
+                          key={`${similarMovie.id}-${idx}`} 
                           className="flex-none snap-start w-[115px] xs:w-[135px] sm:w-[160px] cursor-pointer group"
                           onClick={() => setSelectedMovieId(similarMovie.id)}
                         >

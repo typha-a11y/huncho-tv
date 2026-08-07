@@ -52,7 +52,12 @@ export function MovieGrid({ category }: { category: number | string }) {
     if (newMovies.length === 0) {
       setHasMore(false);
     } else {
-      setMovies((prev) => (pageNum === 1 ? newMovies : [...prev, ...newMovies]));
+      setMovies((prev) => {
+        if (pageNum === 1) return newMovies;
+        const existingIds = new Set(prev.map((m) => m.id));
+        const uniqueNew = newMovies.filter((m) => !existingIds.has(m.id));
+        return [...prev, ...uniqueNew];
+      });
       setHasMore(newMovies.length > 0);
     }
     setLoading(false);
@@ -116,9 +121,9 @@ export function MovieGrid({ category }: { category: number | string }) {
         className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4"
       >
         <AnimatePresence mode="popLayout">
-          {movies.map((movie) => (
+          {movies.map((movie, index) => (
             <motion.div
-              key={movie.id}
+              key={`${movie.id}-${index}`}
               variants={cardVariants}
               whileHover={{ y: -5, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

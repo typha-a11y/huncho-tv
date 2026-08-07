@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, User, PlayCircle, X, Star, Settings, Bookmark } from "lucide-react";
+import { Search, User, PlayCircle, X, Star, Settings, Bookmark, Download } from "lucide-react";
 import { searchMulti, getImageUrl } from "../lib/api";
 import { Movie } from "../types";
 import { useStore } from "../lib/store";
@@ -7,17 +7,23 @@ import { SettingsModal } from "./SettingsModal";
 
 interface NavbarProps {
   onSelectDiscover?: () => void;
+  onSelectZilizotafsiriwa?: () => void;
   onSelectWatchlist?: () => void;
+  onSelectDownloads?: () => void;
+  onSelectProfile?: () => void;
   activeTab?: string | number;
 }
 
-export function Navbar({ onSelectDiscover, onSelectWatchlist, activeTab }: NavbarProps) {
+export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatchlist, onSelectDownloads, onSelectProfile, activeTab }: NavbarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
   const setSelectedMovieId = useStore((s) => s.setSelectedMovieId);
   const watchlist = useStore((s) => s.watchlist);
+  const downloads = useStore((s) => s.downloads);
+  const user = useStore((s) => s.user);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -47,22 +53,43 @@ export function Navbar({ onSelectDiscover, onSelectWatchlist, activeTab }: Navba
               Discover
             </button>
             <button 
+              onClick={onSelectZilizotafsiriwa} 
+              className={`hover:text-purple-600 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'zilizotafsiriwa' ? 'text-purple-600 font-bold' : ''}`}
+            >
+              <span>Zilizotafsiriwa</span>
+              <span className="text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full uppercase">
+                Swahili
+              </span>
+            </button>
+            <button 
               onClick={onSelectWatchlist} 
               className={`hover:text-indigo-600 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'watchlist' ? 'text-indigo-600 font-bold' : ''}`}
             >
-              <span>My Watchlist</span>
+              <span>Watchlist</span>
               {watchlist.length > 0 && (
                 <span className="text-[10px] font-extrabold bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded-full">
                   {watchlist.length}
                 </span>
               )}
             </button>
+            <button 
+              onClick={onSelectDownloads} 
+              className={`hover:text-indigo-600 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'downloads' ? 'text-indigo-600 font-bold' : ''}`}
+            >
+              <span>Downloads</span>
+              {downloads.length > 0 && (
+                <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded-full">
+                  {downloads.length}
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Quick Watchlist & Download shortcuts (Desktop/Tablet only to keep mobile header clean) */}
             <button
               onClick={onSelectWatchlist}
-              className={`p-2 rounded-full transition-colors relative cursor-pointer ${
+              className={`hidden md:flex p-2 rounded-full transition-colors relative cursor-pointer ${
                 activeTab === 'watchlist' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'
               }`}
               title="My Watchlist"
@@ -72,14 +99,28 @@ export function Navbar({ onSelectDiscover, onSelectWatchlist, activeTab }: Navba
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-600 border border-white" />
               )}
             </button>
+
+            <button
+              onClick={onSelectDownloads}
+              className={`hidden md:flex p-2 rounded-full transition-colors relative cursor-pointer ${
+                activeTab === 'downloads' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+              }`}
+              title="My Downloads"
+            >
+              <Download className="w-5 h-5" />
+              {downloads.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-600 border border-white" />
+              )}
+            </button>
+
             <button
               onClick={() => setIsSearchOpen(true)}
               className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors flex items-center gap-2 cursor-pointer"
               title="Search"
             >
               <Search className="w-5 h-5" />
-              <span className="hidden md:inline text-sm font-medium border border-slate-200 px-2 py-0.5 rounded-md bg-white">⌘ K</span>
             </button>
+
             <button 
               onClick={() => setIsSettingsOpen(true)}
               className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors cursor-pointer"
@@ -87,9 +128,30 @@ export function Navbar({ onSelectDiscover, onSelectWatchlist, activeTab }: Navba
             >
               <Settings className="w-5 h-5" />
             </button>
+
+            <button
+              onClick={onSelectProfile}
+              className={`p-1 rounded-full transition-all cursor-pointer ${
+                activeTab === 'profile' ? 'ring-2 ring-indigo-600' : 'hover:ring-2 hover:ring-slate-300'
+              }`}
+              title="Profile & Account"
+            >
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.full_name || "Profile"}
+                  className="w-7 h-7 rounded-full object-cover bg-indigo-100"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                  <User className="w-4 h-4" />
+                </div>
+              )}
+            </button>
           </div>
         </div>
       </nav>
+
 
       {/* Settings Modal */}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
@@ -115,9 +177,9 @@ export function Navbar({ onSelectDiscover, onSelectWatchlist, activeTab }: Navba
             
             <div className="overflow-y-auto flex-1 p-2">
               {results.length > 0 ? (
-                results.map((movie) => (
+                results.map((movie, idx) => (
                   <div
-                    key={movie.id}
+                    key={`${movie.id}-${idx}`}
                     onClick={() => {
                       setSelectedMovieId(movie.id);
                       setIsSearchOpen(false);
