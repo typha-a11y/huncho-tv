@@ -139,9 +139,12 @@ export function AuthModal() {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold backdrop-blur-md mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>HUNCHO TV Sync Account</span>
+            <div className="flex items-center gap-2 mb-3">
+              <img src="/logo.png" alt="Huncho TV" className="h-8 w-auto object-contain rounded-md bg-white/90 p-1 shadow-xs" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Sync Account</span>
+              </div>
             </div>
 
             <h2 className="text-xl font-extrabold tracking-tight">

@@ -40,9 +40,12 @@ export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatc
     <>
       <nav className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 h-16 flex items-center justify-between">
-          <div onClick={onSelectDiscover} className="flex items-center gap-2 cursor-pointer">
-            <PlayCircle className="w-8 h-8 text-indigo-500" />
-            <span className="text-xl font-bold text-slate-900 tracking-tight">HUNCHO TV</span>
+          <div onClick={onSelectDiscover} className="flex items-center gap-2 cursor-pointer shrink-0">
+            <img 
+              src="/logo.png" 
+              alt="Huncho TV" 
+              className="h-9 sm:h-10 w-auto max-w-[150px] sm:max-w-[180px] object-contain rounded-lg transition-transform hover:scale-102" 
+            />
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
