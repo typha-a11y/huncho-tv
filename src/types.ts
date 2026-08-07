@@ -91,6 +91,10 @@ export interface UserProfile {
   full_name?: string | null;
   avatar_url?: string | null;
   is_pro?: boolean;
+  plan_type?: "daily" | "weekly" | "monthly" | "yearly";
+  plan_name?: string;
+  plan_price?: string;
+  plan_expires_at?: string;
   created_at?: string;
 }
 

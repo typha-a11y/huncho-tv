@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Settings, Trash2, X, Check, RefreshCw, HardDrive } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Settings, Trash2, X, Check, RefreshCw, HardDrive, Sparkles } from "lucide-react";
 import { useStore } from "../lib/store";
+import { PlansModal } from "./PlansModal";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -10,6 +12,8 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isReset, setIsReset] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
+  const { user } = useStore();
 
   if (!isOpen) return null;
 
@@ -30,7 +34,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div 
         className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden border border-slate-100 flex flex-col"
@@ -57,6 +61,37 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Subscription Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Membership & Plan</span>
+            </div>
+
+            <div className="p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-100/80 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    {user?.is_pro ? (user.plan_name || "Huncho VIP Member") : "Huncho TV VIP Membership"}
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {user?.is_pro 
+                      ? `Active VIP subscription (${user.plan_price || "TZS 12,000"}).`
+                      : "Access 4K streams, DJ translated movies & fast downloads in TZS."}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowPlansModal(true)}
+                className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{user?.is_pro ? "Manage / Change VIP Plan" : "View Vifurushi (TZS 1,000 - TZS 99,000)"}</span>
+              </button>
+            </div>
+          </div>
+
           {/* Storage Section */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -123,6 +158,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
       </div>
-    </div>
+
+      <PlansModal isOpen={showPlansModal} onClose={() => setShowPlansModal(false)} />
+    </div>,
+    document.body
   );
 }
