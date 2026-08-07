@@ -4,6 +4,7 @@ import { searchMulti, getImageUrl } from "../lib/api";
 import { Movie } from "../types";
 import { useStore } from "../lib/store";
 import { SettingsModal } from "./SettingsModal";
+import logoImg from "../assets/logo.png";
 
 interface NavbarProps {
   onSelectDiscover?: () => void;
@@ -42,7 +43,7 @@ export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatc
         <div className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 h-16 sm:h-20 flex items-center justify-between">
           <div onClick={onSelectDiscover} className="flex items-center gap-2 cursor-pointer shrink-0 py-1">
             <img 
-              src="/logo.png" 
+              src={logoImg} 
               alt="Huncho TV" 
               className="h-10 xs:h-12 sm:h-14 md:h-16 w-auto max-w-[200px] xs:max-w-[250px] sm:max-w-[320px] md:max-w-[380px] object-contain transition-transform hover:scale-102 filter drop-shadow-xs" 
             />
