@@ -140,7 +140,7 @@ export function AuthModal() {
             </button>
 
             <div className="flex items-center gap-2 mb-3">
-              <img src="/logo.png" alt="Huncho TV" className="h-8 w-auto object-contain rounded-md bg-white/90 p-1 shadow-xs" />
+              <img src="/logo.png" alt="Huncho TV" className="h-10 sm:h-12 w-auto object-contain rounded-lg bg-white/90 p-1 shadow-xs" />
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold backdrop-blur-md">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Sync Account</span>

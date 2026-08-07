@@ -55,7 +55,7 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
       <div className="max-w-2xl mx-auto py-8 px-4 space-y-6 text-slate-900">
         <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center space-y-5">
           <div className="mx-auto flex justify-center">
-            <img src="/logo.png" alt="Huncho TV" className="h-12 w-auto object-contain rounded-xl shadow-xs" />
+            <img src="/logo.png" alt="Huncho TV" className="h-14 sm:h-18 w-auto object-contain rounded-xl shadow-xs" />
           </div>
 
           <div className="space-y-2">
