@@ -112,5 +112,61 @@ export const ZILIZOTAFSIRIWA_CATALOG: ZilizotafsiriwaMovie[] = [
     fileSize: "820 MB",
     quality: "720p HD",
     synopsis: "Mbio za magari jijini Rio De Janeiro. DJ Murphy anaelezea kasi ya gari kila sekunde."
+  },
+  {
+    id: "zt-9",
+    title: "IP Man: Pigo la Mwisho",
+    originalTitle: "Ip Man 4: The Finale",
+    djName: "DJ Afro",
+    posterUrl: "https://images.unsplash.com/photo-1555597673-b21d5c935865?w=600&auto=format&fit=crop&q=80",
+    backdropUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&auto=format&fit=crop&q=80",
+    releaseYear: 2021,
+    streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    downloadUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    fileSize: "750 MB",
+    quality: "1080p HD",
+    synopsis: "Master Ip Man anasafiri kwenda San Francisco kulinda heshima ya Wing Chun. DJ Afro anakupa maelezo ya kila ngumi."
+  },
+  {
+    id: "zt-10",
+    title: "RRR: Mapambano ya Mabingwa",
+    originalTitle: "RRR",
+    djName: "DJ Mack",
+    posterUrl: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&auto=format&fit=crop&q=80",
+    backdropUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop&q=80",
+    releaseYear: 2022,
+    streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+    downloadUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+    fileSize: "1.2 GB",
+    quality: "1080p Full HD",
+    synopsis: "Bheem na Raju wanaungana dhidi ya wakoloni wa Kiingereza. DJ Mack na vionjo vyake vya kipekee vya sauti."
+  },
+  {
+    id: "zt-11",
+    title: "Ninja Assassin: Siku ya Malipo",
+    originalTitle: "Ninja Assassin",
+    djName: "DJ Rufus",
+    posterUrl: "https://images.unsplash.com/photo-1514533450685-4493e01d1fdc?w=600&auto=format&fit=crop&q=80",
+    backdropUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&auto=format&fit=crop&q=80",
+    releaseYear: 2020,
+    streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    downloadUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    fileSize: "690 MB",
+    quality: "720p HD",
+    synopsis: "Raizo anasaliti ukoo wake wa ninja na kuanza kuwasaka mmoja baada ya mmoja. DJ Rufus anaongeza mzuka na mikwaju."
+  },
+  {
+    id: "zt-12",
+    title: "Avenger Cyborg: Vita ya Anga",
+    originalTitle: "Alita: Battle Angel",
+    djName: "DJ Murphy",
+    posterUrl: "https://images.unsplash.com/photo-1563089145-599997674d42?w=600&auto=format&fit=crop&q=80",
+    backdropUrl: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200&auto=format&fit=crop&q=80",
+    releaseYear: 2023,
+    streamUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+    downloadUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+    fileSize: "880 MB",
+    quality: "1080p HD",
+    synopsis: "Msichana roboti anagundua nguvu zake za ajabu mjini Iron City. DJ Murphy na maelezo ya sci-fi za mbele."
   }
 ];

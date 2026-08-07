@@ -15,7 +15,7 @@ import { DownloadModal } from "./components/DownloadModal";
 import { AuthModal } from "./components/AuthModal";
 import { ProfileView } from "./components/ProfileView";
 import { DownloadsView } from "./components/DownloadsView";
-import { ZilizotafsiriwaView } from "./components/ZilizotafsiriwaView";
+import { ZilizotafsiriwaView, ZilizotafsiriwaCarousel } from "./components/ZilizotafsiriwaView";
 import { MovieGrid } from "./components/MovieGrid";
 import { WatchlistGrid } from "./components/WatchlistGrid";
 import { PullToRefresh } from "./components/PullToRefresh";
@@ -24,6 +24,7 @@ import {
   getPopularMovies, 
   getTopRatedMovies, 
   getUpcomingMovies,
+  getNowPlayingMovies,
   getGenres,
   getMoviesByGenre
 } from "./lib/api";
@@ -36,6 +37,11 @@ export default function App() {
   const [popular, setPopular] = useState<Movie[]>([]);
   const [topRated, setTopRated] = useState<Movie[]>([]);
   const [upcoming, setUpcoming] = useState<Movie[]>([]);
+  const [nowPlaying, setNowPlaying] = useState<Movie[]>([]);
+  const [actionMovies, setActionMovies] = useState<Movie[]>([]);
+  const [animationMovies, setAnimationMovies] = useState<Movie[]>([]);
+  const [sciFiMovies, setSciFiMovies] = useState<Movie[]>([]);
+  const [comedyMovies, setComedyMovies] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [heroMovies, setHeroMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,17 +51,38 @@ export default function App() {
 
   const handleRefresh = async () => {
     try {
-      const [trendingData, popularData, topRatedData, upcomingData, genresData] = await Promise.all([
+      const [
+        trendingData, 
+        popularData, 
+        topRatedData, 
+        upcomingData, 
+        nowPlayingData,
+        actionData,
+        animData,
+        sciFiData,
+        comedyData,
+        genresData
+      ] = await Promise.all([
         getTrendingMovies(),
         getPopularMovies(),
         getTopRatedMovies(),
         getUpcomingMovies(),
+        getNowPlayingMovies(),
+        getMoviesByGenre(28, 1),
+        getMoviesByGenre(16, 1),
+        getMoviesByGenre(878, 1),
+        getMoviesByGenre(35, 1),
         getGenres()
       ]);
       setTrending(trendingData);
       setPopular(popularData);
       setTopRated(topRatedData);
       setUpcoming(upcomingData);
+      setNowPlaying(nowPlayingData);
+      setActionMovies(actionData);
+      setAnimationMovies(animData);
+      setSciFiMovies(sciFiData);
+      setComedyMovies(comedyData);
       setGenres(genresData);
       if (activeTab === "home" || activeTab === "discover") {
         setHeroMovies(trendingData);
@@ -71,12 +98,33 @@ export default function App() {
       getPopularMovies(),
       getTopRatedMovies(),
       getUpcomingMovies(),
+      getNowPlayingMovies(),
+      getMoviesByGenre(28, 1),
+      getMoviesByGenre(16, 1),
+      getMoviesByGenre(878, 1),
+      getMoviesByGenre(35, 1),
       getGenres()
-    ]).then(([trendingData, popularData, topRatedData, upcomingData, genresData]) => {
+    ]).then(([
+      trendingData, 
+      popularData, 
+      topRatedData, 
+      upcomingData, 
+      nowPlayingData,
+      actionData,
+      animData,
+      sciFiData,
+      comedyData,
+      genresData
+    ]) => {
       setTrending(trendingData);
       setPopular(popularData);
       setTopRated(topRatedData);
       setUpcoming(upcomingData);
+      setNowPlaying(nowPlayingData);
+      setActionMovies(actionData);
+      setAnimationMovies(animData);
+      setSciFiMovies(sciFiData);
+      setComedyMovies(comedyData);
       setGenres(genresData);
       setHeroMovies(trendingData);
       setLoading(false);
@@ -348,31 +396,93 @@ export default function App() {
             >
               <HeroBanner movies={heroMovies} badge={getBadgeText()} />
               
+              {/* Trending Bento Grid */}
               <BentoGrid title="Trending This Week" movies={trendingGrid} />
-              
+
+              {/* Upcoming Releases */}
               <div className="pt-2">
-                <div className="flex items-center justify-between mb-4">
-                   <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Popular Movies</h2>
-                   <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-sm cursor-pointer">View All</button>
-                </div>
-                <CategoryCarousel title="" movies={popular} />
-              </div>
-              
-              <div className="pt-2">
-                <div className="flex items-center justify-between mb-4">
-                   <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Top Rated Classics</h2>
-                   <button onClick={() => setActiveTab("top_rated")} className="text-indigo-600 font-bold hover:underline text-sm cursor-pointer">View All</button>
-                </div>
-                <CategoryCarousel title="" movies={topRated} />
-              </div>
-              
-              <div className="pt-2">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between gap-2 mb-4">
                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Upcoming Releases</h2>
-                   <button onClick={() => setActiveTab("upcoming")} className="text-indigo-600 font-bold hover:underline text-sm cursor-pointer">View All</button>
+                   <button onClick={() => setActiveTab("upcoming")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                 </div>
                 <CategoryCarousel title="" movies={upcoming} />
               </div>
+
+              {/* Now Playing in Cinemas */}
+              {nowPlaying.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Now Playing in Theaters</h2>
+                    <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
+                  </div>
+                  <CategoryCarousel title="" movies={nowPlaying} />
+                </div>
+              )}
+              
+              {/* Popular Movies */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                   <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Popular Movies</h2>
+                   <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
+                </div>
+                <CategoryCarousel title="" movies={popular} />
+              </div>
+
+              {/* Action & Martial Arts */}
+              {actionMovies.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Action & Martial Arts</h2>
+                    <button onClick={() => setActiveTab(28)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Action</button>
+                  </div>
+                  <CategoryCarousel title="" movies={actionMovies} />
+                </div>
+              )}
+              
+              {/* Top Rated Classics */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                   <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Top Rated Classics</h2>
+                   <button onClick={() => setActiveTab("top_rated")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
+                </div>
+                <CategoryCarousel title="" movies={topRated} />
+              </div>
+
+              {/* Animation & Family Magic */}
+              {animationMovies.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Animation & Family Magic</h2>
+                    <button onClick={() => setActiveTab(16)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Animation</button>
+                  </div>
+                  <CategoryCarousel title="" movies={animationMovies} />
+                </div>
+              )}
+
+              {/* Sci-Fi & Cyberpunk */}
+              {sciFiMovies.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Sci-Fi & Future Worlds</h2>
+                    <button onClick={() => setActiveTab(878)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Sci-Fi</button>
+                  </div>
+                  <CategoryCarousel title="" movies={sciFiMovies} />
+                </div>
+              )}
+
+              {/* Comedy & Laughs */}
+              {comedyMovies.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Comedy & Stand-up Laughs</h2>
+                    <button onClick={() => setActiveTab(35)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Comedy</button>
+                  </div>
+                  <CategoryCarousel title="" movies={comedyMovies} />
+                </div>
+              )}
+
+              {/* Swahili Dubbed Featured Section */}
+              <ZilizotafsiriwaCarousel onViewAll={() => setActiveTab("zilizotafsiriwa")} />
             </motion.div>
           ) : (
             <motion.div 
