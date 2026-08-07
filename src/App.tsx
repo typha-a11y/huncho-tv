@@ -15,6 +15,7 @@ import { DownloadModal } from "./components/DownloadModal";
 import { AuthModal } from "./components/AuthModal";
 import { ProfileView } from "./components/ProfileView";
 import { DownloadsView } from "./components/DownloadsView";
+import { HistoryView } from "./components/HistoryView";
 import { ZilizotafsiriwaView, ZilizotafsiriwaCarousel } from "./components/ZilizotafsiriwaView";
 import { MovieGrid } from "./components/MovieGrid";
 import { WatchlistGrid } from "./components/WatchlistGrid";
@@ -374,6 +375,16 @@ export default function App() {
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
               <DownloadsView onExplore={() => setActiveTab("home")} />
+            </motion.div>
+          ) : activeTab === "history" ? (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <HistoryView onExplore={() => setActiveTab("home")} />
             </motion.div>
           ) : activeTab === "profile" ? (
             <motion.div

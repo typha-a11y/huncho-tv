@@ -109,18 +109,6 @@ export function AuthModal() {
     }
   };
 
-  const handleDemoSignIn = () => {
-    setUser({
-      id: "usr_demo_huncho",
-      email: "alex.huncho@hunchotv.com",
-      full_name: "Alex Huncho",
-      avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      is_pro: true,
-      created_at: new Date().toISOString(),
-    });
-    closeAuthModal();
-  };
-
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
@@ -267,24 +255,6 @@ export function AuthModal() {
                 )}
               </button>
             </form>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400">
-                <span className="bg-white px-2">or quick demo</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleDemoSignIn}
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span>Instant Demo Sign In (PRO Account)</span>
-            </button>
           </div>
         </motion.div>
       </div>

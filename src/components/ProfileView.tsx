@@ -1,6 +1,7 @@
 import { useState } from "react";
 import logoImg from "../assets/logo.png";
 import { PlansModal } from "./PlansModal";
+import { SettingsModal } from "./SettingsModal";
 import { 
   User as UserIcon, 
   Crown, 
@@ -42,6 +43,8 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
   const [copiedSql, setCopiedSql] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showAvatarSelect, setShowAvatarSelect] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
@@ -241,7 +244,10 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
         </h3>
 
         <div className="divide-y divide-slate-100">
-          <div className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer">
+          <div 
+            onClick={() => setShowSettingsModal(true)}
+            className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                 <Grid className="w-4 h-4" />
@@ -254,7 +260,10 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
             <ChevronRight className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors">
+          <div 
+            onClick={() => setShowSettingsModal(true)}
+            className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
                 <Sun className="w-4 h-4" />
@@ -333,7 +342,10 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
             </div>
           </div>
 
-          <div className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer">
+          <div 
+            onClick={() => onNavigateTab?.("history")}
+            className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
                 <Clock className="w-4 h-4" />
@@ -348,48 +360,7 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
         </div>
       </div>
 
-      {/* Group C: Supabase Database Integration & RLS */}
-      <div className="bg-white rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Supabase Database & RLS</span>
-          </h3>
-          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-            isSupabaseConfigured ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-          }`}>
-            {isSupabaseConfigured ? "ACTIVE" : "PENDING KEYS"}
-          </span>
-        </div>
 
-        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/60 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h4 className="text-xs font-extrabold text-slate-900">PostgreSQL Schema & Security Policies</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                4 core tables defined with Row Level Security (RLS) for isolated user data management.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button
-              onClick={() => setShowSqlModal(true)}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>View SQL Schema</span>
-            </button>
-            <button
-              onClick={handleCopySql}
-              className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-              <span>{copiedSql ? "Copied SQL" : "Copy SQL Script"}</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Group D: Account & Support */}
       <div className="bg-white rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm space-y-3">
@@ -422,7 +393,10 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
             </button>
           </div>
 
-          <div className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer">
+          <div 
+            onClick={() => setShowFeedbackModal(true)}
+            className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
                 <MessageSquare className="w-4 h-4" />
@@ -435,7 +409,10 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
             <ChevronRight className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer">
+          <div 
+            onClick={() => setShowSettingsModal(true)}
+            className="py-3 px-2 flex items-center justify-between hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
                 <Trash2 className="w-4 h-4" />
@@ -486,6 +463,49 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
               >
                 {copiedSql ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 <span>{copiedSql ? "Copied to Clipboard!" : "Copy SQL Script"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+
+      {/* Feedback & Support Modal */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Feedback & Support</h3>
+                  <p className="text-xs text-slate-500">We'd love to hear from you</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <Trash2 className="w-5 h-5 hidden" />
+                <span className="font-bold px-2">Close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">What's on your mind?</label>
+                <textarea 
+                  className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-slate-50 min-h-[100px] resize-none"
+                  placeholder="Report a bug, request a feature, or just say hi..."
+                ></textarea>
+              </div>
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md transition-colors"
+              >
+                Send Feedback
               </button>
             </div>
           </div>
