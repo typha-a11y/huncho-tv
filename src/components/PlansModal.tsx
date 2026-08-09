@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Sparkles, Shield, CreditCard, X, Smartphone, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { useStore } from "../lib/store";
+import logoImg from "../assets/logo.png";
 
 interface SubscriptionPlan {
   id: "daily" | "weekly" | "monthly" | "yearly";
@@ -158,7 +159,7 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
         {/* Header */}
         <div className="px-4 py-2.5 sm:px-6 sm:py-3 bg-white text-slate-900 flex items-center justify-between shrink-0 border-b border-slate-100">
           <div className="flex items-center gap-2.5 min-w-0">
-            <img src="/logo.png" alt="Huncho TV" className="h-6 sm:h-8 w-auto object-contain shrink-0" />
+            <img src={logoImg} alt="Huncho TV" className="h-6 sm:h-8 w-auto object-contain shrink-0" />
             <div className="min-w-0">
               <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[9px] sm:text-[10px] font-black uppercase tracking-wider">
                 <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />

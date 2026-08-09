@@ -20,6 +20,7 @@ import { ZilizotafsiriwaView, ZilizotafsiriwaCarousel } from "./components/Ziliz
 import { MovieGrid } from "./components/MovieGrid";
 import { WatchlistGrid } from "./components/WatchlistGrid";
 import { PullToRefresh } from "./components/PullToRefresh";
+import { Recommendations } from "./components/Recommendations";
 import { 
   getTrendingMovies, 
   getPopularMovies, 
@@ -27,7 +28,8 @@ import {
   getUpcomingMovies,
   getNowPlayingMovies,
   getGenres,
-  getMoviesByGenre
+  getMoviesByGenre,
+  getCuratedDownloads
 } from "./lib/api";
 import { Movie, Genre } from "./types";
 import { cn } from "./lib/utils";
@@ -43,6 +45,7 @@ export default function App() {
   const [animationMovies, setAnimationMovies] = useState<Movie[]>([]);
   const [sciFiMovies, setSciFiMovies] = useState<Movie[]>([]);
   const [comedyMovies, setComedyMovies] = useState<Movie[]>([]);
+  const [curatedDownloads, setCuratedDownloads] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [heroMovies, setHeroMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +65,8 @@ export default function App() {
         animData,
         sciFiData,
         comedyData,
-        genresData
+        genresData,
+        curatedData
       ] = await Promise.all([
         getTrendingMovies(),
         getPopularMovies(),
@@ -73,7 +77,8 @@ export default function App() {
         getMoviesByGenre(16, 1),
         getMoviesByGenre(878, 1),
         getMoviesByGenre(35, 1),
-        getGenres()
+        getGenres(),
+        getCuratedDownloads()
       ]);
       setTrending(trendingData);
       setPopular(popularData);
@@ -85,6 +90,7 @@ export default function App() {
       setSciFiMovies(sciFiData);
       setComedyMovies(comedyData);
       setGenres(genresData);
+      setCuratedDownloads(curatedData);
       if (activeTab === "home" || activeTab === "discover") {
         setHeroMovies(trendingData);
       }
@@ -104,7 +110,8 @@ export default function App() {
       getMoviesByGenre(16, 1),
       getMoviesByGenre(878, 1),
       getMoviesByGenre(35, 1),
-      getGenres()
+      getGenres(),
+      getCuratedDownloads()
     ]).then(([
       trendingData, 
       popularData, 
@@ -115,7 +122,8 @@ export default function App() {
       animData,
       sciFiData,
       comedyData,
-      genresData
+      genresData,
+      curatedData
     ]) => {
       setTrending(trendingData);
       setPopular(popularData);
@@ -127,6 +135,7 @@ export default function App() {
       setSciFiMovies(sciFiData);
       setComedyMovies(comedyData);
       setGenres(genresData);
+      setCuratedDownloads(curatedData);
       setHeroMovies(trendingData);
       setLoading(false);
     });
@@ -409,6 +418,19 @@ export default function App() {
               
               {/* Trending Bento Grid */}
               <BentoGrid title="Trending This Week" movies={trendingGrid} />
+
+              {/* Personalized Recommendations */}
+              <Recommendations />
+
+              {/* Curated Downloads */}
+              {curatedDownloads.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Curated Downloads</h2>
+                  </div>
+                  <CategoryCarousel title="" movies={curatedDownloads} />
+                </div>
+              )}
 
               {/* Upcoming Releases */}
               <div className="pt-2">

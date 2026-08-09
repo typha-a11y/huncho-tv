@@ -127,7 +127,7 @@ export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatc
 
             <button 
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors cursor-pointer"
+              className="hidden p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors cursor-pointer"
               title="Settings"
             >
               <Settings className="w-5 h-5" />

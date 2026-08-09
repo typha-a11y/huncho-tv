@@ -67,7 +67,7 @@ export interface WatchHistoryItem {
 
 export interface DownloadSource {
   id: string;
-  source: "YTS" | "Web Scraper" | "Internet Archive" | "Direct Cloud";
+  source: "Supabase" | "YTS" | "Web Scraper" | "Internet Archive" | "Direct Cloud" | string;
   quality: string;
   type: "torrent" | "magnet" | "direct";
   url: string;
@@ -76,13 +76,14 @@ export interface DownloadSource {
   peers?: number;
   format?: string;
   hash?: string;
+  uploaderName?: string;
 }
 
 export interface DownloadResolverResult {
   title: string;
   imdbId: string | null;
   sources: DownloadSource[];
-  activeSourceType: "YTS" | "Web Scraper" | "Internet Archive" | "Direct Cloud" | null;
+  activeSourceType: "Supabase" | "YTS" | "Web Scraper" | "Internet Archive" | "Direct Cloud" | string | null;
 }
 
 export interface UserProfile {

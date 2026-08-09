@@ -34,7 +34,10 @@ const BROWSER_HEADERS = {
 };
 
 // Initialize Supabase client if environment credentials exist
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://huncho-tv.supabase.co";
+let SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://huncho-tv.supabase.co";
+if (SUPABASE_URL && !SUPABASE_URL.startsWith("http://") && !SUPABASE_URL.startsWith("https://")) {
+  SUPABASE_URL = "https://" + SUPABASE_URL + ".supabase.co";
+}
 const SUPABASE_KEY =
   process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 

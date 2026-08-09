@@ -2,46 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { WatchHistoryItem, UserProfile, UserDownloadItem } from "../types";
 
-// Sample initial downloads for instant interactive UI preview
-const INITIAL_DEMO_DOWNLOADS: UserDownloadItem[] = [
-  {
-    id: "dl-1",
-    movie_id: "550",
-    title: "Fight Club (1999)",
-    poster_path: "/pB8O23J31H2m335B331A.jpg",
-    quality: "1080p",
-    file_size: "1.8 GB",
-    download_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-    downloaded_at: "2026-08-05T14:32:00Z",
-    duration: "2h 19m",
-    source_type: "Local Files"
-  },
-  {
-    id: "dl-2",
-    movie_id: "27205",
-    title: "Inception (2010)",
-    poster_path: "/oYu2T1323J31H2m335B331A.jpg",
-    quality: "4K HDR",
-    file_size: "3.2 GB",
-    download_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    downloaded_at: "2026-08-06T09:15:00Z",
-    duration: "2h 28m",
-    source_type: "Local Files"
-  },
-  {
-    id: "dl-3",
-    movie_id: "157336",
-    title: "Interstellar (2014)",
-    poster_path: "/gEU2gPk912H2m335B331A.jpg",
-    quality: "720p",
-    file_size: "850 MB",
-    download_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-    downloaded_at: "2026-08-06T18:40:00Z",
-    duration: "2h 49m",
-    source_type: "Received"
-  }
-];
-
 interface AppState {
   // Auth state
   user: UserProfile | null;
@@ -58,6 +18,7 @@ interface AppState {
   
   history: Record<number, WatchHistoryItem>;
   updateHistory: (item: WatchHistoryItem) => void;
+  removeFromHistory: (id: number) => void;
   
   // Downloads
   downloads: UserDownloadItem[];
@@ -124,9 +85,15 @@ export const useStore = create<AppState>()(
         set((state) => ({
           history: { ...state.history, [item.id]: item },
         })),
+      removeFromHistory: (id) =>
+        set((state) => {
+          const newHistory = { ...state.history };
+          delete newHistory[id];
+          return { history: newHistory };
+        }),
 
       // Downloads
-      downloads: INITIAL_DEMO_DOWNLOADS,
+      downloads: [],
       addDownload: (item) =>
         set((state) => ({
           downloads: [item, ...state.downloads.filter((d) => d.id !== item.id)],
@@ -168,6 +135,17 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "huncho-tv-storage",
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          if (persistedState.downloads) {
+            persistedState.downloads = persistedState.downloads.filter(
+              (d: any) => !["dl-1", "dl-2", "dl-3"].includes(d.id)
+            );
+          }
+        }
+        return persistedState;
+      },
       partialize: (state) => ({ 
         user: state.user,
         watchlist: state.watchlist, 

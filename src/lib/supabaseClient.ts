@@ -4,22 +4,36 @@ import { createClient } from "@supabase/supabase-js";
 const rawUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
 const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
 
-const isValidUrl = Boolean(
-  rawUrl && (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))
-);
+let safeUrl = "https://placeholder-project.supabase.co";
+let isValidUrl = false;
 
-const supabaseUrl = isValidUrl ? rawUrl : "https://placeholder-project.supabase.co";
+if (rawUrl) {
+  let urlToTest = rawUrl;
+  if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+    urlToTest = `https://${rawUrl}.supabase.co`;
+  }
+  try {
+    const parsed = new URL(urlToTest);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      isValidUrl = true;
+      safeUrl = urlToTest;
+    }
+  } catch (e) {
+    isValidUrl = false;
+  }
+}
+
 const supabaseAnonKey = rawKey || "placeholder-anon-key";
 
 // Helper check to verify if valid Supabase credentials exist
 export const isSupabaseConfigured = Boolean(
   isValidUrl &&
   rawKey &&
-  !supabaseUrl.includes("placeholder")
+  !safeUrl.includes("placeholder")
 );
 
 // Create standard Supabase Client instance
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(safeUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

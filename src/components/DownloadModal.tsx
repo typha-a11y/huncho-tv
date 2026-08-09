@@ -26,7 +26,7 @@ import { resolveDownloadLinks, recordNotificationRequest, unrestrictDebridLink, 
 import { DownloadResolverResult, DownloadSource } from "../types";
 
 export function DownloadModal() {
-  const { isDownloadModalOpen, downloadTarget, closeDownloadModal } = useStore();
+  const { isDownloadModalOpen, downloadTarget, closeDownloadModal, addDownload } = useStore();
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<DownloadResolverResult | null>(null);
@@ -87,11 +87,41 @@ export function DownloadModal() {
 
   const handleDownloadClick = (source: DownloadSource) => {
     if (!source.url || source.url.trim() === "") return;
+    
+    // Add to real downloads store
+    addDownload({
+      id: `dl-${downloadTarget?.movieId}-${Date.now()}`,
+      movie_id: downloadTarget?.movieId?.toString() || "0",
+      title: downloadTarget?.title || "Unknown Movie",
+      poster_path: null,
+      quality: source.quality,
+      file_size: source.size,
+      download_url: source.url,
+      downloaded_at: new Date().toISOString(),
+      duration: "Unknown", // TMDB API doesn't usually give duration in the light object
+      source_type: "Local Files"
+    });
+
     window.open(source.url, "_blank", "noopener,noreferrer");
   };
 
   const handleUnrestrictMagnet = async (src: DownloadSource) => {
     if (!src.url) return;
+    
+    // Add to real downloads store
+    addDownload({
+      id: `dl-${downloadTarget?.movieId}-${Date.now()}`,
+      movie_id: downloadTarget?.movieId?.toString() || "0",
+      title: downloadTarget?.title || "Unknown Movie",
+      poster_path: null,
+      quality: src.quality,
+      file_size: src.size,
+      download_url: src.url,
+      downloaded_at: new Date().toISOString(),
+      duration: "Unknown",
+      source_type: "Cloud"
+    });
+
     setDebridLoading(src.id);
     try {
       const directUrl = await unrestrictDebridLink(src.url);
@@ -295,6 +325,11 @@ export function DownloadModal() {
                             {src.seeds !== undefined && (
                               <span className="text-emerald-600 font-semibold">
                                 {src.seeds} seeds / {src.peers} peers
+                              </span>
+                            )}
+                            {src.uploaderName && (
+                              <span className="text-indigo-600 font-semibold">
+                                Uploaded by {src.uploaderName}
                               </span>
                             )}
                           </div>

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Movie, MovieDetails, Ratings, OMDbResponse, DownloadSource, DownloadResolverResult } from "../types";
+import { supabase } from "./supabaseClient";
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY;
@@ -30,6 +31,46 @@ const mockMovies: Movie[] = Array.from({ length: 10 }).map((_, i) => ({
   genre_ids: [28, 12],
   media_type: "movie",
 }));
+
+export const getCuratedDownloads = async (): Promise<Movie[]> => {
+  try {
+    const { data: movies, error } = await supabase
+      .from('movies')
+      .select('id, imdb_id, title, uploader_name')
+      .limit(10);
+      
+    if (error || !movies) {
+      console.warn("Supabase Custom Downloads fetch error:", error);
+      return [];
+    }
+
+    if (movies.length === 0) return [];
+
+    // Since our app uses TMDB format, we should probably fetch the TMDB data for these movies
+    // but the prompt implies fetching them to show on the homepage.
+    // If they have IMDB IDs, we might fetch from TMDB via find.
+    const curatedMovies = await Promise.all(
+      movies.map(async (m) => {
+        if (!TMDB_API_KEY || !m.imdb_id) return null;
+        try {
+          const res = await tmdb.get(`/find/${m.imdb_id}`, { params: { external_source: 'imdb_id' } });
+          const foundMovies = res.data.movie_results;
+          if (foundMovies && foundMovies.length > 0) {
+            return foundMovies[0];
+          }
+        } catch (err) {
+          console.warn("Error resolving TMDB info for curated movie:", m.imdb_id);
+        }
+        return null;
+      })
+    );
+    
+    return curatedMovies.filter((m) => m !== null) as Movie[];
+  } catch (err) {
+    console.warn("Curated Downloads Error:", err);
+    return [];
+  }
+};
 
 export const getPopularMovies = async (page = 1): Promise<Movie[]> => {
   if (!TMDB_API_KEY) return mockMovies;
@@ -299,53 +340,57 @@ export const resolveDownloadLinks = async (
   };
 
   // Try API route first (/api/download-resolver)
+  // Or check Supabase Custom Downloads directly!
   updateProgress("Supabase", "checking");
-  try {
-    const yearQuery = year ? `&year=${encodeURIComponent(String(year))}` : "";
-    const resolverApiUrl = `/api/download-resolver?imdb_id=${encodeURIComponent(imdbId || "")}&title=${encodeURIComponent(title)}${yearQuery}`;
-    const apiRes = await axios.get(resolverApiUrl, { timeout: 8000 });
-    
-    if (apiRes.data && apiRes.data.sources && Array.isArray(apiRes.data.sources)) {
-      const validSources: DownloadSource[] = apiRes.data.sources.filter(
-        (s: DownloadSource) => Boolean(s.url && typeof s.url === "string" && s.url.trim().length > 0)
-      );
-
-      if (validSources.length > 0) {
-        const activeSource = apiRes.data.activeSourceType || validSources[0]?.source || "Supabase";
+  if (imdbId) {
+    try {
+      const { data: movie, error } = await supabase
+        .from('movies')
+        .select(`
+          id,
+          imdb_id,
+          title,
+          uploader_name,
+          movie_downloads (
+            id,
+            download_url,
+            quality,
+            file_size,
+            server_label
+          )
+        `)
+        .eq('imdb_id', imdbId)
+        .single();
         
-        // Update progress for all tiers based on what was active
-        if (activeSource === "Supabase") {
+      if (!error && movie && movie.movie_downloads && movie.movie_downloads.length > 0) {
+        const validSources: DownloadSource[] = movie.movie_downloads
+          .filter((d: any) => d.download_url && d.download_url.trim().length > 0)
+          .map((d: any) => ({
+            id: d.id,
+            source: d.server_label || "Supabase",
+            quality: d.quality || "HD",
+            type: "direct",
+            url: d.download_url,
+            size: d.file_size || "Unknown",
+            format: "MP4/MKV",
+            uploaderName: movie.uploader_name
+          }));
+          
+        if (validSources.length > 0) {
           updateProgress("Supabase", "found");
-        } else if (activeSource === "YTS" || activeSource === "Real-Debrid") {
-          updateProgress("Supabase", "failed");
-          updateProgress("YTS", "found");
-        } else if (activeSource === "Web Scraper") {
-          updateProgress("Supabase", "failed");
-          updateProgress("YTS", "failed");
-          updateProgress("Web Scraper", "found");
-        } else if (activeSource === "Internet Archive") {
-          updateProgress("Supabase", "failed");
-          updateProgress("YTS", "failed");
-          updateProgress("Web Scraper", "failed");
-          updateProgress("Internet Archive", "found");
-        } else if (activeSource === "Direct Cloud") {
-          updateProgress("YTS", "failed");
-          updateProgress("Web Scraper", "failed");
-          updateProgress("Internet Archive", "failed");
-          updateProgress("Direct Cloud", "found");
+          return {
+            title: movie.title || title,
+            imdbId,
+            sources: validSources,
+            activeSourceType: validSources[0].source,
+          };
         }
-
-        return {
-          title: apiRes.data.title || title,
-          imdbId,
-          sources: validSources,
-          activeSourceType: activeSource,
-        };
       }
+    } catch (err) {
+      console.warn("Supabase downloads fetch failed:", err);
     }
-  } catch {
-    // API resolver endpoint unreachable; fall through quietly
   }
+  updateProgress("Supabase", "failed");
 
   // Fallback direct client-side checks if API endpoint is unreachable or returned empty
   updateProgress("YTS", "checking");

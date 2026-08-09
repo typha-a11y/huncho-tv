@@ -60,7 +60,7 @@ export function HistoryView({ onExplore }: { onExplore?: () => void }) {
                 <div className="w-16 sm:w-20 aspect-[2/3] shrink-0 rounded-lg overflow-hidden bg-slate-100 relative shadow-sm">
                   {item.poster_path ? (
                     <img
-                      src={getImageUrl(item.poster_path, "w92")}
+                      src={getImageUrl(item.poster_path, "w500")}
                       alt={item.title}
                       className="w-full h-full object-cover"
                     />

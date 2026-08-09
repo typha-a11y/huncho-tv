@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Bookmark, Star, Trash2, Play, Sparkles } from "lucide-react";
+import { Bookmark, Star, Trash2, Play, Sparkles, ArrowUpDown } from "lucide-react";
 import { useStore } from "../lib/store";
 import { getMovieDetails, getImageUrl, getPrimaryGenre } from "../lib/api";
 import { MovieDetails } from "../types";
@@ -31,10 +31,13 @@ const cardVariants = {
   }
 };
 
+type SortOption = "date" | "title" | "popularity";
+
 export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
   const { watchlist, removeFromWatchlist, setSelectedMovieId } = useStore();
   const [movies, setMovies] = useState<MovieDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>("date");
 
   useEffect(() => {
     let isMounted = true;
@@ -70,6 +73,21 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
       isMounted = false;
     };
   }, [watchlist]);
+
+  const sortedMovies = useMemo(() => {
+    return [...movies].sort((a, b) => {
+      if (sortBy === "title") {
+        return (a.title || a.original_title || "").localeCompare(b.title || b.original_title || "");
+      }
+      if (sortBy === "popularity") {
+        return (b.vote_average || 0) - (a.vote_average || 0);
+      }
+      // "date": Sort by index in watchlist, descending (newest first)
+      const indexA = watchlist.indexOf(a.id);
+      const indexB = watchlist.indexOf(b.id);
+      return indexB - indexA;
+    });
+  }, [movies, sortBy, watchlist]);
 
   if (loading) {
     return (
@@ -113,13 +131,28 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
 
   return (
     <div className="py-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-2">
           <Bookmark className="w-5 h-5 text-indigo-600 fill-indigo-600/20" />
           <h2 className="text-lg sm:text-xl font-bold text-slate-900">Saved Movies</h2>
           <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
             {movies.length}
           </span>
+        </div>
+        
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200">
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="bg-transparent text-xs font-medium text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="date">Date Added</option>
+              <option value="title">A-Z</option>
+              <option value="popularity">Popularity</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -130,7 +163,7 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
         className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4"
       >
         <AnimatePresence mode="popLayout">
-          {movies.map((movie, index) => {
+          {sortedMovies.map((movie, index) => {
             const genreName = getPrimaryGenre(movie.genre_ids) || (movie.genres?.[0]?.name);
             return (
               <motion.div
