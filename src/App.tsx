@@ -101,45 +101,56 @@ export default function App() {
   };
 
   useEffect(() => {
-    Promise.all([
-      getTrendingMovies(),
-      getPopularMovies(),
-      getTopRatedMovies(),
-      getUpcomingMovies(),
-      getNowPlayingMovies(),
-      getMoviesByGenre(28, 1),
-      getMoviesByGenre(16, 1),
-      getMoviesByGenre(878, 1),
-      getMoviesByGenre(35, 1),
-      getGenres(),
-      getCuratedDownloads()
-    ]).then(([
-      trendingData, 
-      popularData, 
-      topRatedData, 
-      upcomingData, 
-      nowPlayingData,
-      actionData,
-      animData,
-      sciFiData,
-      comedyData,
-      genresData,
-      curatedData
-    ]) => {
-      setTrending(trendingData);
-      setPopular(popularData);
-      setTopRated(topRatedData);
-      setUpcoming(upcomingData);
-      setNowPlaying(nowPlayingData);
-      setActionMovies(actionData);
-      setAnimationMovies(animData);
-      setSciFiMovies(sciFiData);
-      setComedyMovies(comedyData);
-      setGenres(genresData);
-      setCuratedDownloads(curatedData);
-      setHeroMovies(trendingData);
-      setLoading(false);
-    });
+    const loadHomeData = () => {
+      Promise.all([
+        getTrendingMovies(),
+        getPopularMovies(),
+        getTopRatedMovies(),
+        getUpcomingMovies(),
+        getNowPlayingMovies(),
+        getMoviesByGenre(28, 1),
+        getMoviesByGenre(16, 1),
+        getMoviesByGenre(878, 1),
+        getMoviesByGenre(35, 1),
+        getGenres(),
+        getCuratedDownloads()
+      ]).then(([
+        trendingData, 
+        popularData, 
+        topRatedData, 
+        upcomingData, 
+        nowPlayingData,
+        actionData,
+        animData,
+        sciFiData,
+        comedyData,
+        genresData,
+        curatedData
+      ]) => {
+        setTrending(trendingData);
+        setPopular(popularData);
+        setTopRated(topRatedData);
+        setUpcoming(upcomingData);
+        setNowPlaying(nowPlayingData);
+        setActionMovies(actionData);
+        setAnimationMovies(animData);
+        setSciFiMovies(sciFiData);
+        setComedyMovies(comedyData);
+        setGenres(genresData);
+        setCuratedDownloads(curatedData);
+        setHeroMovies(trendingData);
+        setLoading(false);
+      }).catch((err) => {
+        console.warn("Home data auto-refresh error:", err);
+      });
+    };
+
+    loadHomeData();
+
+    // Auto refresh homepage data every 10 minutes (600,000 ms)
+    const intervalId = setInterval(loadHomeData, 10 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {

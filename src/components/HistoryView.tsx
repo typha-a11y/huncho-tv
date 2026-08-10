@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Clock, Play, Trash2, ArrowLeft } from "lucide-react";
 import { useStore } from "../lib/store";
-import { getImageUrl } from "../lib/api";
+import { MoviePosterImage } from "./MoviePosterImage";
 
 export function HistoryView({ onExplore }: { onExplore?: () => void }) {
   const { history, removeFromHistory, setSelectedMovieId } = useStore();
@@ -58,17 +58,12 @@ export function HistoryView({ onExplore }: { onExplore?: () => void }) {
                 onClick={() => setSelectedMovieId(item.id)}
               >
                 <div className="w-16 sm:w-20 aspect-[2/3] shrink-0 rounded-lg overflow-hidden bg-slate-100 relative shadow-sm">
-                  {item.poster_path ? (
-                    <img
-                      src={getImageUrl(item.poster_path, "w500")}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-200">
-                      <Play className="w-6 h-6 text-slate-400" />
-                    </div>
-                  )}
+                  <MoviePosterImage
+                    src={item.poster_path}
+                    title={item.title}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
                   {/* Progress bar overlay on image */}
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-900/50">
                     <div 

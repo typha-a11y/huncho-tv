@@ -36,9 +36,11 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
   if (topFive.length === 0) return <div className="w-full min-h-[420px] xs:min-h-[460px] bg-slate-200 animate-pulse rounded-3xl" />;
 
   const isWatchlisted = watchlist.includes(movie.id);
-  const heroImageUrl = movie.backdrop_path 
+  const heroImageUrl = movie.backdrop_path && movie.backdrop_path.trim() !== ""
     ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` 
-    : `https://image.tmdb.org/t/p/w780${movie.poster_path}`;
+    : movie.poster_path && movie.poster_path.trim() !== ""
+      ? `https://image.tmdb.org/t/p/w780${movie.poster_path}`
+      : "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&auto=format&fit=crop&q=80";
 
   return (
     <div 
@@ -58,6 +60,14 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
           transition={{ duration: 0.5 }}
           src={heroImageUrl}
           alt={movie.title}
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (movie.poster_path && !target.src.includes(movie.poster_path)) {
+              target.src = `https://image.tmdb.org/t/p/w780${movie.poster_path}`;
+            } else {
+              target.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&auto=format&fit=crop&q=80";
+            }
+          }}
           className="absolute inset-0 w-full h-full object-cover object-top z-0"
         />
       </AnimatePresence>

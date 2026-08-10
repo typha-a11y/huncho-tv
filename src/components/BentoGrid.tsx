@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Star } from "lucide-react";
+import { Star, Flame } from "lucide-react";
 import { Movie } from "../types";
 import { getImageUrl, getPrimaryGenre } from "../lib/api";
 import { useStore } from "../lib/store";
@@ -12,7 +12,10 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
 
   return (
     <section className="py-2 md:py-4">
-      <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4">{title}</h2>
+      <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4 flex items-center gap-2">
+        <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 animate-pulse shrink-0" />
+        <span>{title}</span>
+      </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         {/* Large Feature Item */}
         <motion.div 
@@ -24,8 +27,11 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
         >
           <MoviePosterImage 
             src={movies[0].backdrop_path || (movies[0] as any).poster_url || movies[0].poster_path} 
+            posterPath={movies[0].poster_path || (movies[0] as any).poster_url}
+            backdropPath={movies[0].backdrop_path}
             title={movies[0].title || movies[0].original_title}
             alt={movies[0].title}
+            loading="eager"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent pointer-events-none" />
@@ -57,8 +63,11 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
             >
               <MoviePosterImage 
                 src={movie.backdrop_path || (movie as any).poster_url || movie.poster_path} 
+                posterPath={movie.poster_path || (movie as any).poster_url}
+                backdropPath={movie.backdrop_path}
                 title={movie.title || movie.original_title}
                 alt={movie.title}
+                loading="eager"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent pointer-events-none" />
@@ -90,7 +99,14 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
 
   return (
     <section className={title ? "py-2 md:py-4" : ""}>
-      {title && <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4">{title}</h2>}
+      {title && (
+        <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4 flex items-center gap-2">
+          {(title.toLowerCase().includes("trending") || title.toLowerCase().includes("upload") || title.toLowerCase().includes("hot") || title.toLowerCase().includes("popular")) && (
+            <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 animate-pulse shrink-0" />
+          )}
+          <span>{title}</span>
+        </h2>
+      )}
       <div className="snap-x snap-mandatory overflow-x-auto hide-scrollbar flex gap-3 px-4 -mx-4 pb-4">
         {movies.map((movie, index) => (
           <motion.div 
@@ -105,14 +121,16 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
           >
             <div className="aspect-[2/3] overflow-hidden relative">
               <MoviePosterImage
-                src={(movie as any).poster_url || movie.poster_path}
+                src={(movie as any).poster_url || movie.poster_path || movie.backdrop_path}
+                posterPath={movie.poster_path || (movie as any).poster_url}
+                backdropPath={movie.backdrop_path}
                 title={movie.title || movie.original_title}
                 alt={movie.title || movie.original_title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
               />
               {((movie as any).category || getPrimaryGenre(movie.genre_ids)) && (
-                <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-slate-900/70 backdrop-blur-md text-white text-[9px] font-bold rounded-md border border-white/20 leading-none shadow-xs uppercase tracking-wider">
+                <span className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5 px-1 py-[1px] sm:px-1.5 sm:py-0.5 bg-slate-900/80 backdrop-blur-md text-white text-[7px] xs:text-[8px] sm:text-[9px] font-bold rounded-xs sm:rounded-md border border-white/20 leading-none shadow-xs uppercase tracking-tight max-w-[85%] truncate z-10 pointer-events-none">
                   {(movie as any).category || getPrimaryGenre(movie.genre_ids)}
                 </span>
               )}

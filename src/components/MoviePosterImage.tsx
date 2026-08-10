@@ -9,6 +9,8 @@ interface MoviePosterImageProps {
   alt?: string;
   className?: string;
   loading?: "lazy" | "eager";
+  posterPath?: string | null;
+  backdropPath?: string | null;
 }
 
 export function MoviePosterImage({
@@ -17,28 +19,30 @@ export function MoviePosterImage({
   alt,
   className = "w-full h-full object-cover",
   loading = "lazy",
+  posterPath,
+  backdropPath,
 }: MoviePosterImageProps) {
-  const [imgSrc, setImgSrc] = useState<string>(() => getSafeImageUrl(src));
+  const [imgSrc, setImgSrc] = useState<string>(() => getSafeImageUrl(src || posterPath || backdropPath));
   const [hasError, setHasError] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [attemptedTmdbFallback, setAttemptedTmdbFallback] = useState<boolean>(false);
+  const [fallbackStep, setFallbackStep] = useState<number>(0);
 
   useEffect(() => {
     let isMounted = true;
     setHasError(false);
-    setAttemptedTmdbFallback(false);
+    setFallbackStep(0);
 
-    const initialUrl = getSafeImageUrl(src);
-    setImgSrc(initialUrl);
+    const primaryUrl = getSafeImageUrl(src) || getSafeImageUrl(posterPath) || getSafeImageUrl(backdropPath);
+    setImgSrc(primaryUrl);
 
     // If src is missing or points to Nkiri/WordPress scraped image, resolve poster URL via TMDB or proxy
     const isNkiri = Boolean(
       src && typeof src === "string" && (src.includes("thenkiri") || src.includes("nkiri") || src.includes("wp-content"))
     );
 
-    if (!src || isNkiri || !initialUrl) {
+    if (!primaryUrl || isNkiri) {
       setIsLoading(true);
-      resolvePosterUrl(src, title)
+      resolvePosterUrl(src || posterPath || backdropPath, title)
         .then((resolvedUrl) => {
           if (!isMounted) return;
           if (resolvedUrl) {
@@ -59,23 +63,36 @@ export function MoviePosterImage({
     return () => {
       isMounted = false;
     };
-  }, [src, title]);
+  }, [src, posterPath, backdropPath, title]);
 
   const handleError = async () => {
-    if (!attemptedTmdbFallback && title) {
-      setAttemptedTmdbFallback(true);
+    // Step 1: Try alternate provided path (e.g. posterPath if backdrop failed, or vice versa)
+    if (fallbackStep === 0) {
+      setFallbackStep(1);
+      const altUrl = getSafeImageUrl(posterPath) !== imgSrc ? getSafeImageUrl(posterPath) : getSafeImageUrl(backdropPath);
+      if (altUrl && altUrl !== imgSrc) {
+        setImgSrc(altUrl);
+        setHasError(false);
+        return;
+      }
+    }
+
+    // Step 2: Try live TMDB search fallback by title
+    if (fallbackStep <= 1 && title) {
+      setFallbackStep(2);
       const clean = cleanTitleForTMDB(title);
       if (clean) {
         setIsLoading(true);
         const tmdbPoster = await fetchTmdbPosterFallback(clean);
         setIsLoading(false);
-        if (tmdbPoster) {
+        if (tmdbPoster && tmdbPoster !== imgSrc) {
           setImgSrc(tmdbPoster);
           setHasError(false);
           return;
         }
       }
     }
+
     setHasError(true);
   };
 
@@ -87,7 +104,7 @@ export function MoviePosterImage({
         </div>
       )}
 
-      {!hasError && imgSrc ? (
+      {!hasError && imgSrc && imgSrc.trim() !== "" ? (
         <img
           src={imgSrc}
           alt={alt || title || "Movie poster"}

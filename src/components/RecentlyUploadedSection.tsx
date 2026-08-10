@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Flame } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { Movie } from "../types";
 import { CategoryCarousel } from "./BentoGrid";
@@ -64,8 +65,12 @@ export function RecentlyUploadedSection() {
 
     fetchRecentlyUploaded();
 
+    // Auto refresh recently uploaded section every 10 minutes (600,000 ms)
+    const intervalId = setInterval(fetchRecentlyUploaded, 10 * 60 * 1000);
+
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -78,8 +83,9 @@ export function RecentlyUploadedSection() {
       {recentMovies.length > 0 && (
         <div>
           <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
-            <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">
-              Recently Uploaded Movies
+            <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 animate-pulse shrink-0" />
+              <span>Recently Uploaded Movies</span>
             </h2>
           </div>
           <CategoryCarousel title="" movies={recentMovies} />
@@ -89,8 +95,9 @@ export function RecentlyUploadedSection() {
       {recentSeries.length > 0 && (
         <div>
           <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
-            <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">
-              Recently Uploaded Series
+            <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 fill-rose-500 animate-pulse shrink-0" />
+              <span>Recently Uploaded Series</span>
             </h2>
           </div>
           <CategoryCarousel title="" movies={recentSeries} />

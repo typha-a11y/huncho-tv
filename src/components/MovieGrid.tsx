@@ -133,15 +133,17 @@ export function MovieGrid({ category }: { category: number | string }) {
             >
               <div className="aspect-[2/3] overflow-hidden bg-slate-100 relative">
                 <MoviePosterImage
-                  src={(movie as any).poster_url || movie.poster_path}
+                  src={(movie as any).poster_url || movie.poster_path || movie.backdrop_path}
+                  posterPath={movie.poster_path || (movie as any).poster_url}
+                  backdropPath={movie.backdrop_path}
                   title={movie.title || movie.original_title}
                   alt={movie.title || movie.original_title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                 />
-                {getPrimaryGenre(movie.genre_ids) && (
-                  <span className="absolute top-1.5 left-1.5 px-1 py-[1px] bg-slate-900/65 backdrop-blur-md text-white text-[7px] font-semibold rounded-[3px] border border-white/20 leading-none shadow-xs">
-                    {getPrimaryGenre(movie.genre_ids)}
+                {((movie as any).category || getPrimaryGenre(movie.genre_ids)) && (
+                  <span className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5 px-1 py-[1px] sm:px-1.5 sm:py-0.5 bg-slate-900/80 backdrop-blur-md text-white text-[7px] xs:text-[8px] sm:text-[9px] font-bold rounded-xs sm:rounded-md border border-white/20 leading-none shadow-xs uppercase tracking-tight max-w-[85%] truncate z-10 pointer-events-none">
+                    {(movie as any).category || getPrimaryGenre(movie.genre_ids)}
                   </span>
                 )}
               </div>

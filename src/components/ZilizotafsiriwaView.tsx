@@ -375,8 +375,9 @@ function MovieCarouselCard({
       className="snap-start shrink-0 w-[150px] xs:w-[170px] sm:w-[200px] bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-all flex flex-col h-full group"
     >
       <div className="relative aspect-[2/3] bg-slate-100 overflow-hidden">
-        <img
+        <MoviePosterImage
           src={movie.posterUrl}
+          title={movie.title}
           alt={movie.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
@@ -579,14 +580,15 @@ export function ZilizotafsiriwaCarousel({ onViewAll }: { onViewAll: () => void }
             className="snap-start shrink-0 w-[140px] xs:w-[160px] sm:w-[190px] cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-slate-200/80 bg-white transition-all"
           >
             <div className="aspect-[2/3] overflow-hidden relative bg-slate-100">
-              <img
+              <MoviePosterImage
                 src={movie.posterUrl}
+                title={movie.title}
                 alt={movie.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-black/20" />
-              <span className="absolute top-2 left-2 px-2 py-0.5 bg-purple-600 text-white text-[9px] font-black rounded-md shadow-md uppercase">
+              <span className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5 px-1 py-[1px] sm:px-1.5 sm:py-0.5 bg-purple-600/90 text-white text-[7px] xs:text-[8px] sm:text-[9px] font-bold rounded-xs sm:rounded-md shadow-xs uppercase tracking-tight max-w-[85%] truncate z-10 pointer-events-none">
                 {movie.djName}
               </span>
               <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] text-white font-bold">

@@ -310,40 +310,51 @@ export function DownloadModal() {
                 </div>
 
                 {/* List of Available Formats / Sources */}
-                <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
                   {result.sources.map((src) => {
                     const hasValidUrl = Boolean(src.url && src.url.trim().length > 0);
                     return (
                       <div
                         key={src.id}
-                        className="p-3.5 rounded-xl border border-slate-200/80 bg-white hover:border-indigo-200 hover:shadow-xs transition-all flex flex-col xs:flex-row xs:items-center justify-between gap-3"
+                        className="p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-200 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
                       >
                         {/* Left Specs */}
-                        <div className="space-y-1 min-w-0">
+                        <div className="space-y-2 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-slate-900">
+                            <span className="text-sm font-extrabold text-slate-900 tracking-tight">
                               {src.quality}
                             </span>
 
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${getSourceBadgeStyle(src.source)}`}>
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${getSourceBadgeStyle(src.source)}`}>
                               {getSourceIcon(src.source)}
-                              {src.source}
+                              <span className="truncate max-w-[180px]">{src.source}</span>
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-                            <span>Size: <strong className="text-slate-800">{src.size}</strong></span>
+                          {/* Metadata Chips Row */}
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-slate-600 font-medium flex-wrap">
+                            <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/80 text-[11px] whitespace-nowrap">
+                              <span className="text-slate-400 font-normal">Size:</span>
+                              <strong className="text-slate-800 font-bold">{src.size}</strong>
+                            </span>
+
                             {src.format && (
-                              <span>Format: <strong className="text-slate-800">{src.format}</strong></span>
+                              <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/80 text-[11px] whitespace-nowrap">
+                                <span className="text-slate-400 font-normal">Format:</span>
+                                <strong className="text-slate-800 font-bold">{src.format}</strong>
+                              </span>
                             )}
+
                             {src.seeds !== undefined && (
-                              <span className="text-emerald-600 font-semibold">
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200/80 text-[11px] font-semibold whitespace-nowrap">
                                 {src.seeds} seeds / {src.peers} peers
                               </span>
                             )}
+
                             {src.uploaderName && (
-                              <span className="text-indigo-600 font-semibold">
-                                Uploaded by {src.uploaderName}
+                              <span className="inline-flex items-center gap-1 bg-indigo-50/70 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-100 text-[11px] font-semibold max-w-full">
+                                <span className="text-indigo-400 font-normal shrink-0">Uploaded by</span>
+                                <strong className="font-bold truncate max-w-[140px] sm:max-w-[200px]">{src.uploaderName}</strong>
                               </span>
                             )}
                           </div>
@@ -353,7 +364,7 @@ export function DownloadModal() {
                         <button
                           onClick={() => handleDownloadClick(src)}
                           disabled={!hasValidUrl}
-                          className={`shrink-0 h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                          className={`w-full sm:w-auto shrink-0 h-10 px-5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
                             !hasValidUrl
                               ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200 opacity-60"
                               : src.type === "magnet"
@@ -363,16 +374,16 @@ export function DownloadModal() {
                         >
                           {src.type === "magnet" ? (
                             <>
-                              <Magnet className="w-3.5 h-3.5" />
+                              <Magnet className="w-4 h-4" />
                               <span>Get Magnet</span>
                             </>
                           ) : (
                             <>
-                              <Download className="w-3.5 h-3.5" />
+                              <Download className="w-4 h-4" />
                               <span>Download</span>
                             </>
                           )}
-                          <ExternalLink className="w-3 h-3 opacity-70 ml-0.5" />
+                          <ExternalLink className="w-3.5 h-3.5 opacity-80 ml-0.5" />
                         </button>
                       </div>
                     );

@@ -141,7 +141,7 @@ export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatc
               }`}
               title="Profile & Account"
             >
-              {user?.avatar_url ? (
+              {user?.avatar_url && user.avatar_url.trim() !== "" ? (
                 <img
                   src={user.avatar_url}
                   alt={user.full_name || "Profile"}

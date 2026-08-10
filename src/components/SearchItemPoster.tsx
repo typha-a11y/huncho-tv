@@ -77,16 +77,15 @@ export function SearchItemPoster({
         <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-300">
           <Film className="w-5 h-5 text-slate-300" />
         </div>
-      ) : (
+      ) : !isFailed && imgSrc && imgSrc.trim() !== "" ? (
         <img
           src={imgSrc}
           alt={rawTitle || "Movie poster"}
           onError={handleError}
           className={className}
         />
-      )}
-      {isFailed && !isLoading && (
-        <div className="absolute inset-0 bg-slate-100 flex items-center justify-center text-slate-400">
+      ) : (
+        <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400">
           <Film className="w-5 h-5 text-slate-400" />
         </div>
       )}

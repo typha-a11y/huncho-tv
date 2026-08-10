@@ -189,7 +189,9 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
 
                 <div className="aspect-[2/3] overflow-hidden bg-slate-100 relative">
                   <MoviePosterImage
-                    src={(movie as any).poster_url || movie.poster_path}
+                    src={(movie as any).poster_url || movie.poster_path || movie.backdrop_path}
+                    posterPath={movie.poster_path || (movie as any).poster_url}
+                    backdropPath={movie.backdrop_path}
                     title={movie.title || movie.original_title}
                     alt={movie.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"

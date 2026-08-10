@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "../lib/store";
 import { getImageUrl } from "../lib/api";
+import { MoviePosterImage } from "./MoviePosterImage";
 import { UserDownloadItem } from "../types";
 
 interface DownloadsViewProps {
@@ -116,8 +117,9 @@ export function DownloadsView({ onExplore }: DownloadsViewProps) {
                   <div className="flex items-center gap-3.5 min-w-0">
                     {/* Thumbnail preview with overlay duration badge */}
                     <div className="relative shrink-0 w-20 sm:w-24 h-28 rounded-xl overflow-hidden bg-slate-100 shadow-xs group">
-                      <img
+                      <MoviePosterImage
                         src={posterSrc}
+                        title={item.title}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />

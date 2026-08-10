@@ -382,11 +382,17 @@ export function MovieDetailModal() {
                     {movie.credits.cast.slice(0, 10).map((actor, idx) => (
                       <div key={`${actor.id}-${idx}`} className="flex-none w-18 xs:w-22 text-center snap-start">
                         <div className="w-14 h-14 xs:w-16 xs:h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-indigo-500/20 mx-auto mb-1.5 shadow-xs flex items-center justify-center">
-                          {actor.profile_path ? (
+                          {actor.profile_path && getImageUrl(actor.profile_path, "w500") ? (
                             <img 
                               src={getImageUrl(actor.profile_path, "w500")}
                               alt={actor.name}
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                if (e.currentTarget.parentElement) {
+                                  e.currentTarget.parentElement.innerHTML = '<svg class="w-6 h-6 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>';
+                                }
+                              }}
                             />
                           ) : (
                             <UserCheck className="w-6 h-6 text-slate-400" />
@@ -414,8 +420,9 @@ export function MovieDetailModal() {
                           onClick={() => setSelectedMovieId(similarMovie.id)}
                         >
                           <div className="aspect-[2/3] w-full bg-slate-100 rounded-xl overflow-hidden shadow-xs border border-slate-200/60 mb-1.5 relative">
-                            <img 
-                              src={getImageUrl(similarMovie.poster_path, "w500")}
+                            <MoviePosterImage 
+                              src={similarMovie.poster_path}
+                              title={similarMovie.title}
                               alt={similarMovie.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               loading="lazy"

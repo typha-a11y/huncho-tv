@@ -17,10 +17,17 @@ export const getImageUrl = (path: string | null, size: "w500" | "original" = "w5
   return getSafeImageUrl(path);
 };
 
+const fallbackCache = new Map<string, string>();
+
 export const fetchTmdbPosterFallback = async (title: string): Promise<string | null> => {
   if (!title) return null;
   const cleanTitle = cleanTitleForTMDB(title);
   if (!cleanTitle) return null;
+
+  if (fallbackCache.has(cleanTitle)) {
+    const cached = fallbackCache.get(cleanTitle);
+    return cached || null;
+  }
 
   try {
     let results: any[] = [];
@@ -40,14 +47,35 @@ export const fetchTmdbPosterFallback = async (title: string): Promise<string | n
       results = res.data?.results || [];
     }
 
-    const match = results.find((item: any) => item.poster_path);
-    if (match && match.poster_path) {
-      return `https://image.tmdb.org/t/p/w185${match.poster_path}`;
+    const match = results.find((item: any) => item.poster_path || item.backdrop_path);
+    if (match) {
+      const imgPath = match.poster_path || match.backdrop_path;
+      if (imgPath) {
+        const fullUrl = `https://image.tmdb.org/t/p/w500${imgPath}`;
+        fallbackCache.set(cleanTitle, fullUrl);
+        return fullUrl;
+      }
+    }
+
+    // Secondary fallback: search movie endpoint directly
+    const apiKey = TMDB_API_KEY || "15d20e45d57a2298716a5796b0830a66";
+    const movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(cleanTitle)}`;
+    const movieRes = await axios.get(movieUrl, { timeout: 4000 });
+    const movieResults = movieRes.data?.results || [];
+    const movieMatch = movieResults.find((item: any) => item.poster_path || item.backdrop_path);
+    if (movieMatch) {
+      const imgPath = movieMatch.poster_path || movieMatch.backdrop_path;
+      if (imgPath) {
+        const fullUrl = `https://image.tmdb.org/t/p/w500${imgPath}`;
+        fallbackCache.set(cleanTitle, fullUrl);
+        return fullUrl;
+      }
     }
   } catch (err) {
     console.warn("TMDB API fallback poster fetch error:", err);
   }
 
+  fallbackCache.set(cleanTitle, "");
   return null;
 };
 
