@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ZILIZOTAFSIRIWA_CATALOG } from "../data/zilizotafsiriwa";
 import { ZilizotafsiriwaMovie } from "../types";
 import { useStore } from "../lib/store";
+import { MoviePosterImage } from "./MoviePosterImage";
 
 interface ZilizotafsiriwaViewProps {
   onExplore?: () => void;
@@ -462,8 +463,9 @@ function MovieGridCard({
       className="group bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-all flex flex-col h-full"
     >
       <div className="relative aspect-[2/3] bg-slate-100 overflow-hidden">
-        <img
+        <MoviePosterImage
           src={movie.posterUrl}
+          title={movie.title}
           alt={movie.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"

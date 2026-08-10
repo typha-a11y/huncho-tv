@@ -4,6 +4,7 @@ import { Bookmark, Star, Trash2, Play, Sparkles, ArrowUpDown } from "lucide-reac
 import { useStore } from "../lib/store";
 import { getMovieDetails, getImageUrl, getPrimaryGenre } from "../lib/api";
 import { MovieDetails } from "../types";
+import { MoviePosterImage } from "./MoviePosterImage";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -54,7 +55,7 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
         if (isMounted) {
           // Filter out nulls if any fetch failed and keep unique
           const validMovies = results.filter((m): m is MovieDetails => m !== null);
-          const seen = new Set<number>();
+          const seen = new Set<number | string>();
           const uniqueMovies = validMovies.filter((m) => {
             if (seen.has(m.id)) return false;
             seen.add(m.id);
@@ -187,8 +188,9 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
                 </button>
 
                 <div className="aspect-[2/3] overflow-hidden bg-slate-100 relative">
-                  <img
-                    src={getImageUrl(movie.poster_path, "w500")}
+                  <MoviePosterImage
+                    src={(movie as any).poster_url || movie.poster_path}
+                    title={movie.title || movie.original_title}
                     alt={movie.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"

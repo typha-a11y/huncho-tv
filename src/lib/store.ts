@@ -12,13 +12,13 @@ interface AppState {
   checkAuthGuard: (actionName?: string) => boolean;
 
   // Watchlist & History
-  watchlist: number[];
-  addToWatchlist: (id: number) => void;
-  removeFromWatchlist: (id: number) => void;
+  watchlist: (number | string)[];
+  addToWatchlist: (id: number | string) => void;
+  removeFromWatchlist: (id: number | string) => void;
   
-  history: Record<number, WatchHistoryItem>;
+  history: Record<string, WatchHistoryItem>;
   updateHistory: (item: WatchHistoryItem) => void;
-  removeFromHistory: (id: number) => void;
+  removeFromHistory: (id: number | string) => void;
   
   // Downloads
   downloads: UserDownloadItem[];
@@ -26,8 +26,8 @@ interface AppState {
   removeDownload: (id: string) => void;
 
   // Movie details & player
-  selectedMovieId: number | null;
-  setSelectedMovieId: (id: number | null) => void;
+  selectedMovieId: number | string | null;
+  setSelectedMovieId: (id: number | string | null) => void;
   
   isVideoPlayerOpen: boolean;
   videoStreamUrl: string | null;
@@ -40,8 +40,8 @@ interface AppState {
 
   // Download modal
   isDownloadModalOpen: boolean;
-  downloadTarget: { title: string; imdbId: string | null; movieId?: number; year?: string | number } | null;
-  openDownloadModal: (title: string, imdbId?: string | null, movieId?: number, year?: string | number) => void;
+  downloadTarget: { title: string; imdbId: string | null; movieId?: number | string; year?: string | number } | null;
+  openDownloadModal: (title: string, imdbId?: string | null, movieId?: number | string, year?: string | number) => void;
   closeDownloadModal: () => void;
 }
 

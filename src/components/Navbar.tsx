@@ -4,6 +4,7 @@ import { searchMulti, getImageUrl } from "../lib/api";
 import { Movie } from "../types";
 import { useStore } from "../lib/store";
 import { SettingsModal } from "./SettingsModal";
+import { SearchItemPoster } from "./SearchItemPoster";
 import logoImg from "../assets/logo.png";
 
 interface NavbarProps {
@@ -190,11 +191,7 @@ export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatc
                     }}
                     className="flex items-center gap-4 p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors"
                   >
-                    <img
-                      src={getImageUrl(movie.poster_path, "w500")}
-                      alt={movie.title || movie.original_title}
-                      className="w-12 h-16 object-cover rounded-md shadow-sm"
-                    />
+                    <SearchItemPoster movie={movie} />
                     <div>
                       <h4 className="font-bold text-slate-900">{movie.title || movie.original_title}</h4>
                       <p className="text-sm text-slate-500 flex items-center gap-1">

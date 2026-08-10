@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { Movie } from "../types";
 import { getImageUrl, getPrimaryGenre } from "../lib/api";
 import { useStore } from "../lib/store";
+import { MoviePosterImage } from "./MoviePosterImage";
 
 export function BentoGrid({ title, movies }: { title: string; movies: Movie[] }) {
   const setSelectedMovieId = useStore((s) => s.setSelectedMovieId);
@@ -21,13 +22,14 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
           onClick={() => setSelectedMovieId(movies[0].id)}
           className="md:col-span-2 relative h-64 md:h-80 rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60"
         >
-          <img 
-            src={getImageUrl(movies[0].backdrop_path || movies[0].poster_path, "original")} 
+          <MoviePosterImage 
+            src={movies[0].backdrop_path || (movies[0] as any).poster_url || movies[0].poster_path} 
+            title={movies[0].title || movies[0].original_title}
             alt={movies[0].title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 p-6">
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 p-6 pointer-events-none">
             <div className="flex items-center gap-1.5 mb-2">
               <div className="inline-block px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-md text-white text-[10px] font-bold">
                 #1 in Trending
@@ -53,13 +55,14 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
               onClick={() => setSelectedMovieId(movie.id)}
               className="relative h-full rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60"
             >
-              <img 
-                src={getImageUrl(movie.backdrop_path || movie.poster_path, "w500")} 
+              <MoviePosterImage 
+                src={movie.backdrop_path || (movie as any).poster_url || movie.poster_path} 
+                title={movie.title || movie.original_title}
                 alt={movie.title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-4">
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 left-0 p-4 pointer-events-none">
                 <div className="flex items-center gap-1 mb-1">
                   <div className="inline-block px-1.5 py-0.5 bg-indigo-600 rounded-md text-white text-[9px] font-bold uppercase tracking-wide">
                     Top #{idx + 2}
@@ -101,15 +104,16 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
             className="snap-start shrink-0 w-[125px] xs:w-[145px] sm:w-[175px] flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/60 bg-white transition-shadow duration-200 ease-out"
           >
             <div className="aspect-[2/3] overflow-hidden relative">
-              <img 
-                src={getImageUrl(movie.poster_path, "w500")} 
-                alt={movie.title}
+              <MoviePosterImage
+                src={(movie as any).poster_url || movie.poster_path}
+                title={movie.title || movie.original_title}
+                alt={movie.title || movie.original_title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
               />
-              {getPrimaryGenre(movie.genre_ids) && (
-                <span className="absolute top-1.5 left-1.5 px-1 py-[1px] bg-slate-900/65 backdrop-blur-md text-white text-[7px] font-semibold rounded-[3px] border border-white/20 leading-none shadow-xs">
-                  {getPrimaryGenre(movie.genre_ids)}
+              {((movie as any).category || getPrimaryGenre(movie.genre_ids)) && (
+                <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-slate-900/70 backdrop-blur-md text-white text-[9px] font-bold rounded-md border border-white/20 leading-none shadow-xs uppercase tracking-wider">
+                  {(movie as any).category || getPrimaryGenre(movie.genre_ids)}
                 </span>
               )}
             </div>

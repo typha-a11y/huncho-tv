@@ -5,6 +5,8 @@ import { getMovieDetails, getRatings, getImageUrl, getPrimaryGenre } from "../li
 import { MovieDetails, Ratings } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { formatTime } from "../lib/utils";
+import { getSafeImageUrl, cleanTitleForTMDB } from "../lib/imageUtils";
+import { MoviePosterImage } from "./MoviePosterImage";
 
 export function MovieDetailModal() {
   const { 
@@ -59,18 +61,64 @@ export function MovieDetailModal() {
       setMovie(null);
       setRatings({ imdb: null, rottenTomatoes: null });
       setLoading(true);
-      getMovieDetails(selectedMovieId).then((data) => {
-        setMovie(data);
-        if (data?.external_ids?.imdb_id) {
-          getRatings(data.external_ids.imdb_id).then(setRatings);
+      getMovieDetails(selectedMovieId).then(async (data) => {
+        let finalData = data;
+        
+        // Client-side live fallback to TMDB for missing or broken metadata from Supabase
+        if (data && (typeof selectedMovieId === 'string')) {
+          const isMissingPoster = !data.poster_path || data.poster_path.includes("thenkiri.com");
+          const isMissingBackdrop = !data.backdrop_path || data.backdrop_path.includes("thenkiri.com");
+          
+          if (isMissingPoster || isMissingBackdrop || !data.overview || data.overview.includes("Custom added movie")) {
+            try {
+              // Clean title by stripping out episode/season tags and quality brackets
+              const cleanTitle = cleanTitleForTMDB(data.title || data.original_title);
+                
+              if (cleanTitle) {
+                // Search TMDB for the cleaned title
+                const tmdbKey = import.meta.env.VITE_TMDB_API_KEY;
+                if (tmdbKey) {
+                  const searchRes = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${tmdbKey}&query=${encodeURIComponent(cleanTitle)}`);
+                  const searchData = await searchRes.json();
+                  
+                  if (searchData.results && searchData.results.length > 0) {
+                    const bestMatch = searchData.results.find((r: any) => r.media_type === "movie" || r.media_type === "tv") || searchData.results[0];
+                    
+                    if (bestMatch && bestMatch.id) {
+                      // Fetch full details to get videos
+                      const type = bestMatch.media_type || 'movie';
+                      const detailsRes = await fetch(`https://api.themoviedb.org/3/${type}/${bestMatch.id}?api_key=${tmdbKey}&append_to_response=videos,external_ids`);
+                      const detailsData = await detailsRes.json();
+                      
+                      finalData = {
+                        ...data,
+                        poster_path: getSafeImageUrl(detailsData.poster_path || data.poster_path),
+                        backdrop_path: getSafeImageUrl(detailsData.backdrop_path || data.backdrop_path),
+                        overview: detailsData.overview || data.overview,
+                        videos: detailsData.videos,
+                        external_ids: detailsData.external_ids || data.external_ids,
+                      };
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn("TMDB Live Fallback Error:", err);
+            }
+          }
+        }
+        
+        setMovie(finalData);
+        if (finalData?.external_ids?.imdb_id) {
+          getRatings(finalData.external_ids.imdb_id).then(setRatings);
         }
         setLoading(false);
 
         // Auto-play trailer if enabled and trailer exists
-        if (autoPlayTrailer) {
-          const trailer = data?.videos?.results?.find(
+        if (autoPlayTrailer && finalData) {
+          const trailer = finalData?.videos?.results?.find(
             (v) => v.site === "YouTube" && v.type === "Trailer"
-          ) || data?.videos?.results?.find((v) => v.site === "YouTube");
+          ) || finalData?.videos?.results?.find((v) => v.site === "YouTube");
           if (trailer) {
             setShowTrailer(true);
           }
@@ -191,9 +239,10 @@ export function MovieDetailModal() {
                 </div>
               ) : (
                 <div className="relative w-full aspect-[16/10] sm:aspect-[21/9] min-h-[220px] max-h-[420px] bg-slate-900 overflow-hidden">
-                  <img 
-                    src={getImageUrl(movie.backdrop_path || movie.poster_path, "original")} 
-                    alt={movie.title}
+                  <MoviePosterImage
+                    src={movie.backdrop_path || movie.poster_path}
+                    title={movie.title || movie.original_title}
+                    alt={movie.title || movie.original_title}
                     className="object-cover object-top w-full h-full"
                   />
                   <div className="bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent absolute inset-0 z-10" />
@@ -205,9 +254,10 @@ export function MovieDetailModal() {
                 <div className="flex flex-row items-end gap-3.5 sm:gap-5">
                   {/* Poster Thumbnail */}
                   <div className="w-22 xs:w-28 sm:w-36 aspect-[2/3] rounded-2xl overflow-hidden shadow-lg border-2 border-white bg-slate-200 shrink-0 relative">
-                    <img
-                      src={getImageUrl(movie.poster_path, "w500")}
-                      alt={movie.title}
+                    <MoviePosterImage
+                      src={movie.poster_path}
+                      title={movie.title || movie.original_title}
+                      alt={movie.title || movie.original_title}
                       className="w-full h-full object-cover"
                     />
                   </div>

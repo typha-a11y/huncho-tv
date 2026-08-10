@@ -64,6 +64,20 @@ export function DownloadModal() {
         downloadTarget.year
       );
       setResult(res);
+
+      if (
+        res &&
+        res.sources &&
+        res.sources.length > 0 &&
+        (res.activeSourceType === "Supabase" ||
+          res.sources.some((s) => s.source.toLowerCase().includes("supabase")))
+      ) {
+        setProgress((prev) =>
+          prev.map((p) =>
+            p.source === "Supabase" ? { ...p, status: "found" } : p
+          )
+        );
+      }
     } catch (err) {
       console.error("Error resolving download links:", err);
       setResult({
@@ -374,7 +388,7 @@ export function DownloadModal() {
 
                 <div className="space-y-1.5 max-w-md mx-auto">
                   <h4 className="text-base font-extrabold text-slate-900 tracking-tight">
-                    Movie Link Coming Soon
+                    No download links available yet
                   </h4>
                   <p className="text-xs font-medium text-slate-600 leading-relaxed">
                     Download links for this title are currently being updated. Check back shortly!

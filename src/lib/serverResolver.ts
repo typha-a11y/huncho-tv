@@ -352,39 +352,126 @@ export async function resolveBackendDownloads(
 ): Promise<ResolverResponse> {
   const { cleanTitle, year } = cleanMovieTitleAndYear(title, inputYear);
 
-  // TIER 1: Database-First Check (Supabase movie_downloads table)
+  // TIER 1: Database-First Check (Supabase movies table with Tiered Query Logic)
   try {
     if (supabase) {
-      let query = supabase.from("movie_downloads").select("*");
-      if (imdbId && imdbId.startsWith("tt")) {
-        query = query.eq("imdb_id", imdbId);
-      } else {
-        query = query.ilike("title", `%${cleanTitle}%`);
+      let movieData: any = null;
+      const movieSlug = (title || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const movieTarget = { title: title || "", imdb_id: imdbId || null, slug: movieSlug };
+
+      // Priority 1: Direct match by slug or exact title
+      try {
+        let { data } = await supabase
+          .from("movies")
+          .select("*")
+          .or(`slug.eq.${movieTarget.slug},title.eq.${movieTarget.title}`)
+          .maybeSingle();
+        movieData = data;
+      } catch (e1) {
+        console.warn("ServerResolver Priority 1 .or() query failed:", e1);
       }
 
-      const { data: dbRows, error } = await query;
-      if (!error && dbRows && dbRows.length > 0) {
-        const verifiedSources: ResolverSource[] = dbRows.map((row: any, idx: number) => ({
-          id: row.id || `supabase-${row.imdb_id || "m"}-${idx}`,
-          source: "Supabase",
-          quality: row.quality || "1080p Verified Supabase Direct Link",
-          type: (row.type as any) || "direct",
-          url: row.download_url || row.url,
-          size: row.size || "Direct High-Speed CDN",
-          format: row.format || "MP4",
-        }));
+      if (!movieData) {
+        try {
+          let { data: slugMatch } = await supabase
+            .from("movies")
+            .select("*")
+            .eq("slug", movieTarget.slug)
+            .maybeSingle();
+          if (slugMatch) {
+            movieData = slugMatch;
+          } else if (movieTarget.title) {
+            let { data: titleMatch } = await supabase
+              .from("movies")
+              .select("*")
+              .eq("title", movieTarget.title)
+              .maybeSingle();
+            movieData = titleMatch;
+          }
+        } catch (eFallback) {
+          console.warn("ServerResolver Priority 1 fallback failed:", eFallback);
+        }
+      }
 
-        const validDbSources = verifiedSources.filter(
-          (s) => Boolean(s.url && s.url.trim().length > 0 && s.url.startsWith("http"))
-        );
+      // Priority 2: Match by imdb_id if available
+      if (!movieData && movieTarget.imdb_id) {
+        try {
+          let { data: imdbMatch } = await supabase
+            .from("movies")
+            .select("*")
+            .eq("imdb_id", movieTarget.imdb_id)
+            .maybeSingle();
+          movieData = imdbMatch;
+        } catch (e2) {
+          console.warn("ServerResolver Priority 2 query error:", e2);
+        }
+      }
 
-        if (validDbSources.length > 0) {
+      // Priority 3: Flexible partial match on clean title
+      if (!movieData && movieTarget.title) {
+        try {
+          const baseTitle = movieTarget.title.replace(/S\d+.*|\(Complete\)|Episode.*/gi, "").trim();
+          if (baseTitle) {
+            let { data: partialMatch } = await supabase
+              .from("movies")
+              .select("*")
+              .ilike("title", `%${baseTitle}%`)
+              .limit(1);
+            if (partialMatch && partialMatch.length > 0) {
+              movieData = partialMatch[0];
+            }
+          }
+        } catch (e3) {
+          console.warn("ServerResolver Priority 3 query error:", e3);
+        }
+      }
+
+      if (movieData) {
+        let rawServers = movieData.download_servers;
+        if (typeof rawServers === "string") {
+          try {
+            rawServers = JSON.parse(rawServers);
+          } catch (e) {
+            console.warn("ServerResolver failed parsing download_servers JSON:", e);
+            rawServers = [];
+          }
+        }
+
+        let serversArray: any[] = [];
+        if (Array.isArray(rawServers)) {
+          serversArray = rawServers;
+        } else if (rawServers && typeof rawServers === "object") {
+          serversArray = Object.values(rawServers);
+        }
+
+        if (serversArray.length === 0 && (movieData.download_url || movieData.url)) {
+          serversArray = [{
+            server_name: "Supabase Direct CDN",
+            url: movieData.download_url || movieData.url,
+            quality: movieData.quality || "HD",
+            file_size: movieData.file_size || "Unknown Size"
+          }];
+        }
+
+        const verifiedSources: ResolverSource[] = serversArray
+          .filter((d: any) => d && (d.url || d.download_url) && String(d.url || d.download_url).trim().length > 0)
+          .map((d: any, idx: number) => ({
+            id: d.id || `supabase-${movieData.id || "m"}-${idx}`,
+            source: d.server_name || d.name || "Supabase",
+            quality: d.quality || "1080p Verified Supabase Direct Link",
+            type: "direct",
+            url: d.url || d.download_url,
+            size: d.file_size || d.size || movieData.file_size || "Direct High-Speed CDN",
+            format: d.format || "MP4",
+          }));
+
+        if (verifiedSources.length > 0) {
           return {
             success: true,
-            imdbId,
-            title: cleanTitle,
+            imdbId: movieData.imdb_id || imdbId,
+            title: movieData.title || cleanTitle,
             activeSourceType: "Supabase",
-            sources: validDbSources,
+            sources: verifiedSources,
           };
         }
       }

@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Movie } from "../types";
-import { getMoviesByGenre, getPopularMovies, getTopRatedMovies, getUpcomingMovies, getNowPlayingMovies, getImageUrl, getPrimaryGenre } from "../lib/api";
+import { getMoviesByGenre, getPopularMovies, getTopRatedMovies, getUpcomingMovies, getNowPlayingMovies, getPrimaryGenre } from "../lib/api";
 import { useStore } from "../lib/store";
 import { Star } from "lucide-react";
+import { MoviePosterImage } from "./MoviePosterImage";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -131,9 +132,10 @@ export function MovieGrid({ category }: { category: number | string }) {
               className="group cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/60 bg-white transition-shadow duration-200 ease-out flex flex-col"
             >
               <div className="aspect-[2/3] overflow-hidden bg-slate-100 relative">
-                <img
-                  src={getImageUrl(movie.poster_path, "w500")}
-                  alt={movie.title}
+                <MoviePosterImage
+                  src={(movie as any).poster_url || movie.poster_path}
+                  title={movie.title || movie.original_title}
+                  alt={movie.title || movie.original_title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                 />

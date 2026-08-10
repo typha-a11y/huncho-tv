@@ -4,7 +4,7 @@ export interface Genre {
 }
 
 export interface Movie {
-  id: number;
+  id: number | string;
   title: string;
   original_title: string;
   overview: string;
@@ -15,6 +15,7 @@ export interface Movie {
   vote_count: number;
   genre_ids: number[];
   media_type?: string;
+  imdb_id?: string;
 }
 
 export interface MovieDetails extends Movie {
@@ -57,7 +58,7 @@ export interface OMDbResponse {
 }
 
 export interface WatchHistoryItem {
-  id: number;
+  id: number | string;
   title: string;
   poster_path: string | null;
   progress: number;

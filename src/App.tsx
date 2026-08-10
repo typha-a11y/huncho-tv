@@ -21,6 +21,7 @@ import { MovieGrid } from "./components/MovieGrid";
 import { WatchlistGrid } from "./components/WatchlistGrid";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { Recommendations } from "./components/Recommendations";
+import { RecentlyUploadedSection } from "./components/RecentlyUploadedSection";
 import { 
   getTrendingMovies, 
   getPopularMovies, 
@@ -412,7 +413,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="space-y-6 sm:space-y-8"
+              className="space-y-4 md:space-y-8"
             >
               <HeroBanner movies={heroMovies} badge={getBadgeText()} />
               
@@ -422,10 +423,13 @@ export default function App() {
               {/* Personalized Recommendations */}
               <Recommendations />
 
+              {/* Recently Uploaded Movies & Series */}
+              <RecentlyUploadedSection />
+
               {/* Curated Downloads */}
               {curatedDownloads.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center justify-between gap-2 mb-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                      <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Curated Downloads</h2>
                   </div>
                   <CategoryCarousel title="" movies={curatedDownloads} />
@@ -433,8 +437,8 @@ export default function App() {
               )}
 
               {/* Upcoming Releases */}
-              <div className="pt-2">
-                <div className="flex items-center justify-between gap-2 mb-4">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Upcoming Releases</h2>
                    <button onClick={() => setActiveTab("upcoming")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                 </div>
@@ -443,8 +447,8 @@ export default function App() {
 
               {/* Now Playing in Cinemas */}
               {nowPlaying.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center justify-between gap-2 mb-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Now Playing in Theaters</h2>
                     <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                   </div>
@@ -453,8 +457,8 @@ export default function App() {
               )}
               
               {/* Popular Movies */}
-              <div className="pt-2">
-                <div className="flex items-center justify-between gap-2 mb-4">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Popular Movies</h2>
                    <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                 </div>
@@ -463,8 +467,8 @@ export default function App() {
 
               {/* Action & Martial Arts */}
               {actionMovies.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center justify-between gap-2 mb-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Action & Martial Arts</h2>
                     <button onClick={() => setActiveTab(28)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Action</button>
                   </div>
@@ -473,8 +477,8 @@ export default function App() {
               )}
               
               {/* Top Rated Classics */}
-              <div className="pt-2">
-                <div className="flex items-center justify-between gap-2 mb-4">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Top Rated Classics</h2>
                    <button onClick={() => setActiveTab("top_rated")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                 </div>
@@ -483,8 +487,8 @@ export default function App() {
 
               {/* Animation & Family Magic */}
               {animationMovies.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center justify-between gap-2 mb-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Animation & Family Magic</h2>
                     <button onClick={() => setActiveTab(16)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Animation</button>
                   </div>
@@ -494,8 +498,8 @@ export default function App() {
 
               {/* Sci-Fi & Cyberpunk */}
               {sciFiMovies.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center justify-between gap-2 mb-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Sci-Fi & Future Worlds</h2>
                     <button onClick={() => setActiveTab(878)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Sci-Fi</button>
                   </div>
@@ -505,8 +509,8 @@ export default function App() {
 
               {/* Comedy & Laughs */}
               {comedyMovies.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex items-center justify-between gap-2 mb-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Comedy & Stand-up Laughs</h2>
                     <button onClick={() => setActiveTab(35)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Comedy</button>
                   </div>

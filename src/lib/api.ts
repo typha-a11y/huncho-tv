@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Movie, MovieDetails, Ratings, OMDbResponse, DownloadSource, DownloadResolverResult } from "../types";
 import { supabase } from "./supabaseClient";
+import { getSafeImageUrl, cleanTitleForTMDB } from "./imageUtils";
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY;
@@ -13,8 +14,41 @@ const tmdb = axios.create({
 });
 
 export const getImageUrl = (path: string | null, size: "w500" | "original" = "w500") => {
-  if (!path) return "https://via.placeholder.com/500x750?text=No+Poster";
-  return `https://image.tmdb.org/t/p/${size}${path}`;
+  return getSafeImageUrl(path);
+};
+
+export const fetchTmdbPosterFallback = async (title: string): Promise<string | null> => {
+  if (!title) return null;
+  const cleanTitle = cleanTitleForTMDB(title);
+  if (!cleanTitle) return null;
+
+  try {
+    let results: any[] = [];
+    if (TMDB_API_KEY) {
+      try {
+        const res = await tmdb.get("/search/multi", { params: { query: cleanTitle } });
+        results = res.data?.results || [];
+      } catch (e) {
+        // Fallback to direct fetch if axios instance fails
+      }
+    }
+
+    if (results.length === 0) {
+      const apiKey = TMDB_API_KEY || "15d20e45d57a2298716a5796b0830a66"; // Public demo key fallback if missing
+      const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(cleanTitle)}`;
+      const res = await axios.get(url, { timeout: 4000 });
+      results = res.data?.results || [];
+    }
+
+    const match = results.find((item: any) => item.poster_path);
+    if (match && match.poster_path) {
+      return `https://image.tmdb.org/t/p/w185${match.poster_path}`;
+    }
+  } catch (err) {
+    console.warn("TMDB API fallback poster fetch error:", err);
+  }
+
+  return null;
 };
 
 // Fallback mock data if TMDB key is missing
@@ -68,6 +102,41 @@ export const getCuratedDownloads = async (): Promise<Movie[]> => {
     return curatedMovies.filter((m) => m !== null) as Movie[];
   } catch (err) {
     console.warn("Curated Downloads Error:", err);
+    return [];
+  }
+};
+
+export const getRecentlyUploadedMovies = async (): Promise<Movie[]> => {
+  try {
+    const { data: recentMovies, error } = await supabase
+      .from('movies')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error || !recentMovies || recentMovies.length === 0) {
+      if (error) console.warn("Supabase recently uploaded error:", error);
+      return [];
+    }
+
+    return recentMovies.map((m) => ({
+      id: m.id,
+      title: m.title,
+      original_title: m.title,
+      overview: m.overview || `Recently uploaded: ${m.title}`,
+      poster_path: m.poster_url || m.poster_path || null,
+      poster_url: m.poster_url || null,
+      backdrop_path: m.backdrop_url || m.backdrop_path || null,
+      release_date: m.created_at || m.release_date,
+      vote_average: typeof m.vote_average === 'number' ? m.vote_average : (typeof m.rating === 'number' ? m.rating : 8.0),
+      vote_count: m.vote_count || 100,
+      genre_ids: [],
+      category: m.category || "Recently Added",
+      media_type: "movie",
+      imdb_id: m.imdb_id,
+    } as any));
+  } catch (err) {
+    console.warn("Error fetching recently uploaded movies:", err);
     return [];
   }
 };
@@ -219,18 +288,65 @@ export const getTrendingMovies = async (): Promise<Movie[]> => {
 };
 
 export const searchMulti = async (query: string): Promise<Movie[]> => {
-  if (!TMDB_API_KEY) return mockMovies.filter((m) => m.title.toLowerCase().includes(query.toLowerCase()));
   if (!query) return [];
+  let results: Movie[] = [];
+
+  // 1. Search Supabase for Custom/Scraped Movies
   try {
-    const res = await tmdb.get("/search/multi", { params: { query } });
-    return res.data.results.filter((item: any) => item.media_type === "movie" || item.media_type === "tv");
+    const cleanQuery = query.replace(/[^a-zA-Z0-9\s-]/g, "").trim();
+    const { data: supaMovies, error } = await supabase
+      .from('movies')
+      .select('id, imdb_id, title, poster_url, category, created_at')
+      .or(`title.ilike.%${cleanQuery}%,slug.ilike.%${cleanQuery}%`)
+      .limit(10);
+
+    if (!error && supaMovies && supaMovies.length > 0) {
+      // Map Supabase movies to the TMDB Movie format expected by the app
+      const supaResults: Movie[] = supaMovies.map(m => ({
+        id: m.id, // Can be string/UUID now
+        title: m.title,
+        original_title: m.title,
+        overview: `Custom added movie: ${m.title}`,
+        poster_path: m.poster_url,
+        backdrop_path: null,
+        release_date: m.created_at,
+        vote_average: 10.0, // Highlight custom movies
+        vote_count: 100,
+        genre_ids: [],
+        media_type: "movie",
+        // We can attach the real Supabase ID or IMDb ID to use later in details if needed
+        imdb_id: m.imdb_id
+      } as any));
+      results = [...supaResults];
+    }
   } catch (err) {
-    console.warn("TMDB API Error:", err.message);
-    return [];
+    console.warn("Supabase search error:", err);
   }
+
+  // 2. Search TMDB
+  if (TMDB_API_KEY) {
+    try {
+      const res = await tmdb.get("/search/multi", { params: { query } });
+      const tmdbResults = res.data.results.filter((item: any) => item.media_type === "movie" || item.media_type === "tv");
+      
+      // Merge and remove duplicates by title
+      const existingTitles = new Set(results.map(r => r.title.toLowerCase()));
+      for (const tItem of tmdbResults) {
+        if (!existingTitles.has((tItem.title || tItem.name || '').toLowerCase())) {
+          results.push(tItem);
+        }
+      }
+    } catch (err: any) {
+      console.warn("TMDB API Error:", err.message);
+    }
+  } else if (results.length === 0) {
+    results = mockMovies.filter((m) => m.title.toLowerCase().includes(query.toLowerCase()));
+  }
+
+  return results;
 };
 
-export const getMovieDetails = async (id: number): Promise<MovieDetails | null> => {
+export const getMovieDetails = async (id: number | string): Promise<MovieDetails | null> => {
   if (!TMDB_API_KEY) {
     return {
       ...mockMovies[0],
@@ -241,13 +357,75 @@ export const getMovieDetails = async (id: number): Promise<MovieDetails | null> 
       external_ids: { imdb_id: "tt1234567" },
     };
   }
+
+  // If the ID is clearly a string (like a UUID from Supabase), query Supabase directly
+  if (typeof id === 'string' && isNaN(Number(id))) {
+    try {
+      const { data: m, error } = await supabase
+        .from('movies')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (!error && m) {
+        return {
+          id: m.id,
+          title: m.title,
+          original_title: m.title,
+          overview: `Custom added movie: ${m.title}`,
+          poster_path: m.poster_url,
+          backdrop_path: m.backdrop_url,
+          release_date: m.created_at,
+          vote_average: 10.0,
+          vote_count: 100,
+          genre_ids: [],
+          runtime: 120,
+          genres: m.category ? [{ id: 1, name: m.category }] : [],
+          media_type: "movie",
+          external_ids: { imdb_id: m.imdb_id }
+        };
+      }
+    } catch (e) {
+      console.warn("Supabase detail fetch error:", e);
+    }
+  }
+
   try {
     const res = await tmdb.get(`/movie/${id}`, {
       params: { append_to_response: "credits,external_ids,similar,videos" },
     });
     return res.data;
   } catch (err) {
-    console.warn("TMDB API Error: Could not fetch movie details.");
+    console.warn("TMDB API Error: Could not fetch movie details. Trying Supabase fallback...");
+    // Fallback to Supabase search if TMDB fails (maybe it was a numeric Supabase ID)
+    try {
+      const { data: m, error } = await supabase
+        .from('movies')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (!error && m) {
+        return {
+          id: m.id,
+          title: m.title,
+          original_title: m.title,
+          overview: `Custom added movie: ${m.title}`,
+          poster_path: m.poster_url,
+          backdrop_path: m.backdrop_url,
+          release_date: m.created_at,
+          vote_average: 10.0,
+          vote_count: 100,
+          genre_ids: [],
+          runtime: 120,
+          genres: m.category ? [{ id: 1, name: m.category }] : [],
+          media_type: "movie",
+          external_ids: { imdb_id: m.imdb_id }
+        };
+      }
+    } catch (e) {
+      console.warn("Supabase fallback fetch error:", e);
+    }
     return null;
   }
 };
@@ -342,53 +520,140 @@ export const resolveDownloadLinks = async (
   // Try API route first (/api/download-resolver)
   // Or check Supabase Custom Downloads directly!
   updateProgress("Supabase", "checking");
-  if (imdbId) {
+  try {
+    let movieData: any = null;
+
+    const movieSlug = (title || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const movieTarget = {
+      title: title || "",
+      imdb_id: imdbId || null,
+      slug: movieSlug,
+    };
+
+    // Priority 1: Direct match by slug or exact title
     try {
-      const { data: movie, error } = await supabase
+      let { data } = await supabase
         .from('movies')
-        .select(`
-          id,
-          imdb_id,
-          title,
-          uploader_name,
-          movie_downloads (
-            id,
-            download_url,
-            quality,
-            file_size,
-            server_label
-          )
-        `)
-        .eq('imdb_id', imdbId)
-        .single();
-        
-      if (!error && movie && movie.movie_downloads && movie.movie_downloads.length > 0) {
-        const validSources: DownloadSource[] = movie.movie_downloads
-          .filter((d: any) => d.download_url && d.download_url.trim().length > 0)
-          .map((d: any) => ({
-            id: d.id,
-            source: d.server_label || "Supabase",
-            quality: d.quality || "HD",
-            type: "direct",
-            url: d.download_url,
-            size: d.file_size || "Unknown",
-            format: "MP4/MKV",
-            uploaderName: movie.uploader_name
-          }));
-          
-        if (validSources.length > 0) {
-          updateProgress("Supabase", "found");
-          return {
-            title: movie.title || title,
-            imdbId,
-            sources: validSources,
-            activeSourceType: validSources[0].source,
-          };
+        .select('*')
+        .or(`slug.eq.${movieTarget.slug},title.eq.${movieTarget.title}`)
+        .maybeSingle();
+
+      movieData = data;
+    } catch (e1) {
+      console.warn("Priority 1 .or() query failed, trying individual fallbacks:", e1);
+    }
+
+    if (!movieData) {
+      try {
+        let { data: slugMatch } = await supabase
+          .from('movies')
+          .select('*')
+          .eq('slug', movieTarget.slug)
+          .maybeSingle();
+
+        if (slugMatch) {
+          movieData = slugMatch;
+        } else if (movieTarget.title) {
+          let { data: titleMatch } = await supabase
+            .from('movies')
+            .select('*')
+            .eq('title', movieTarget.title)
+            .maybeSingle();
+          movieData = titleMatch;
+        }
+      } catch (eFallback) {
+        console.warn("Priority 1 fallback query failed:", eFallback);
+      }
+    }
+
+    // Priority 2: Match by imdb_id if available
+    if (!movieData && movieTarget.imdb_id) {
+      try {
+        let { data: imdbMatch } = await supabase
+          .from('movies')
+          .select('*')
+          .eq('imdb_id', movieTarget.imdb_id)
+          .maybeSingle();
+        movieData = imdbMatch;
+      } catch (e2) {
+        console.warn("Priority 2 query error:", e2);
+      }
+    }
+
+    // Priority 3: Flexible partial match on clean title
+    if (!movieData && movieTarget.title) {
+      try {
+        const baseTitle = movieTarget.title.replace(/S\d+.*|\(Complete\)|Episode.*/gi, '').trim();
+        if (baseTitle) {
+          let { data: partialMatch } = await supabase
+            .from('movies')
+            .select('*')
+            .ilike('title', `%${baseTitle}%`)
+            .limit(1);
+
+          if (partialMatch && partialMatch.length > 0) {
+            movieData = partialMatch[0];
+          }
+        }
+      } catch (e3) {
+        console.warn("Priority 3 query error:", e3);
+      }
+    }
+
+    if (movieData) {
+      // Data Handling: Extract download_servers array and handle stringified JSON
+      let rawServers = movieData.download_servers;
+      if (typeof rawServers === 'string') {
+        try {
+          rawServers = JSON.parse(rawServers);
+        } catch (e) {
+          console.warn("Failed parsing stringified download_servers JSON:", e);
+          rawServers = [];
         }
       }
-    } catch (err) {
-      console.warn("Supabase downloads fetch failed:", err);
+
+      let serversArray: any[] = [];
+      if (Array.isArray(rawServers)) {
+        serversArray = rawServers;
+      } else if (rawServers && typeof rawServers === 'object') {
+        serversArray = Object.values(rawServers);
+      }
+
+      // Also support single download_url or url on movieData object
+      if (serversArray.length === 0 && (movieData.download_url || movieData.url)) {
+        serversArray = [{
+          server_name: "Supabase Direct CDN",
+          url: movieData.download_url || movieData.url,
+          quality: movieData.quality || "HD",
+          file_size: movieData.file_size || "Unknown Size"
+        }];
+      }
+
+      const validSources: DownloadSource[] = serversArray
+        .filter((d: any) => d && (d.url || d.download_url) && String(d.url || d.download_url).trim().length > 0)
+        .map((d: any, idx: number) => ({
+          id: d.id || `supa-${movieData.id || "m"}-${idx}`,
+          source: d.server_name || d.name || "Supabase",
+          quality: d.quality || "HD",
+          type: "direct",
+          url: d.url || d.download_url,
+          size: d.file_size || d.size || movieData.file_size || "Unknown Size",
+          format: d.format || "MP4/MKV",
+          uploaderName: movieData.uploader_name || "Huncho Scraper"
+        }));
+
+      if (validSources.length > 0) {
+        updateProgress("Supabase", "found");
+        return {
+          title: movieData.title || title,
+          imdbId: movieData.imdb_id || imdbId,
+          sources: validSources,
+          activeSourceType: "Supabase",
+        };
+      }
     }
+  } catch (err) {
+    console.warn("Supabase downloads fetch failed:", err);
   }
   updateProgress("Supabase", "failed");
 
