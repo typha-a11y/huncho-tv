@@ -142,3 +142,16 @@ export interface ZilizotafsiriwaMovie {
   synopsis?: string;
 }
 
+export interface LiveChannel {
+  channel_id: string;
+  title: string;
+  category: string;
+  thumbnail: string;
+  stream_url: string;
+  stream_type: "direct_hls" | "embed" | "direct_mp4";
+  is_live?: boolean;
+  viewers_count?: number;
+  current_show?: string;
+  hd_quality?: string;
+}
+

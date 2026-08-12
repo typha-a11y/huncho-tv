@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  CheckCircle2
+  CheckCircle2,
+  Info
 } from "lucide-react";
 import { StreamServer } from "../types";
 import { createClient } from "@supabase/supabase-js";
@@ -54,11 +55,11 @@ export function StreamPlayerModal({
   onClose,
   movieId = "tt30851137",
   imdbId,
-  movieTitle = "Dune: Part Two",
-  year = "2024",
-  duration = "166 min",
+  movieTitle = "Minions & Monsters",
+  year = "2026",
+  duration = "90 min",
   quality = "1080p HD",
-  genre = "Sci-Fi / Action"
+  genre = "Adventure"
 }: StreamPlayerModalProps) {
   const [servers, setServers] = useState<StreamServer[]>([]);
   const [activeServer, setActiveServer] = useState<StreamServer | null>(null);
@@ -69,6 +70,20 @@ export function StreamPlayerModal({
   const [serverError, setServerError] = useState<string | null>(null);
   const [hasReported, setHasReported] = useState(false);
   const [isInterceptorActive, setIsInterceptorActive] = useState(true);
+  const [showHint, setShowHint] = useState(false);
+
+  // Auto-dismiss Huncho Hint after 6 seconds
+  useEffect(() => {
+    if (isOpen) {
+      setShowHint(true);
+      const timer = setTimeout(() => {
+        setShowHint(false);
+      }, 6000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowHint(false);
+    }
+  }, [isOpen, activeServer?.id]);
 
   // Global popup interceptor overriding window.open while modal is open
   useEffect(() => {
@@ -106,9 +121,22 @@ export function StreamPlayerModal({
         activeServer.stream_url?.includes("/api/v1/proxy-hls"))
   );
 
-  // Default generated servers if DB / Render API queries have no custom records
+  // Default generated servers with GoMovies Standard FIRST as requested
   const generateDefaultServers = (targetId: string, titleStr: string): StreamServer[] => {
     return [
+      {
+        id: "srv-gomovies-std",
+        movie_id: targetId,
+        title: titleStr,
+        server_key: "gomovies",
+        server_name: "GoMovies Standard",
+        stream_url: `https://2embed.cc/embed/${targetId}`,
+        stream_type: "embed",
+        quality: "720p HD",
+        latency_ms: 620,
+        is_active: true,
+        is_fastest: true
+      },
       {
         id: "srv-[#2979FF]-render-hls",
         movie_id: targetId,
@@ -119,8 +147,7 @@ export function StreamPlayerModal({
         stream_type: "direct_hls",
         quality: "1080p HD",
         latency_ms: 120,
-        is_active: true,
-        is_fastest: true
+        is_active: true
       },
       {
         id: "srv-dulo-vip",
@@ -156,18 +183,6 @@ export function StreamPlayerModal({
         stream_type: "embed",
         quality: "1080p HD",
         latency_ms: 310,
-        is_active: true
-      },
-      {
-        id: "srv-gomovies-std",
-        movie_id: targetId,
-        title: titleStr,
-        server_key: "gomovies",
-        server_name: "GoMovies Standard",
-        stream_url: `https://2embed.cc/embed/${targetId}`,
-        stream_type: "embed",
-        quality: "720p HD",
-        latency_ms: 620,
         is_active: true
       }
     ];
@@ -223,9 +238,17 @@ export function StreamPlayerModal({
         fetchedServers = generateDefaultServers(effectiveId, movieTitle);
       }
 
-      // Mark the server with minimum latency_ms as fastest
-      const minLatency = Math.min(...fetchedServers.map((s) => s.latency_ms || 999));
-      const formatted = fetchedServers.map((s) => {
+      // Ensure GoMovies Standard is explicitly first in the list
+      let reordered = [...fetchedServers];
+      const gomoviesIndex = reordered.findIndex(
+        (s) => s.server_key === "gomovies" || s.server_name.toLowerCase().includes("gomovies") || s.latency_ms === 620
+      );
+      if (gomoviesIndex > 0) {
+        const [gomoviesServer] = reordered.splice(gomoviesIndex, 1);
+        reordered.unshift(gomoviesServer);
+      }
+
+      const formatted = reordered.map((s, idx) => {
         let fullStreamUrl = s.stream_url;
         if (fullStreamUrl && fullStreamUrl.startsWith("/")) {
           fullStreamUrl = `${BACKEND_API_BASE_URL}${fullStreamUrl}`;
@@ -233,13 +256,12 @@ export function StreamPlayerModal({
         return {
           ...s,
           stream_url: fullStreamUrl,
-          is_fastest: s.latency_ms === minLatency
+          is_fastest: idx === 0 // GoMovies Standard gets FASTEST badge
         };
       });
 
       setServers(formatted);
-      const fastestServer = formatted.find((s) => s.is_fastest) || formatted[0];
-      setActiveServer(fastestServer);
+      setActiveServer(formatted[0]); // Default selected to GoMovies Standard
       setIsLoading(false);
     };
 
@@ -325,149 +347,80 @@ export function StreamPlayerModal({
     }, 150);
   };
 
-  // Speed Badge Helper
-  const renderSpeedBadge = (latencyMs: number, isFastest?: boolean) => {
-    if (isFastest || latencyMs < 300) {
-      return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-[#5E35B1] border border-indigo-200/80 shadow-xs">
-          <Zap className="w-3 h-3 text-[#2979FF] fill-[#2979FF] animate-pulse" />
-          <span>⚡ {latencyMs}ms</span>
-          <span className="hidden sm:inline text-[9px] uppercase tracking-wider font-black text-indigo-700 ml-0.5">
-            Ultra Fast
-          </span>
-        </span>
-      );
-    }
-    if (latencyMs <= 600) {
-      return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#2979FF] border border-blue-200">
-          <Clock className="w-3 h-3 text-[#2979FF]" />
-          <span>{latencyMs}ms</span>
-          <span className="hidden sm:inline text-[9px] font-semibold text-blue-600">Fast</span>
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-        <Server className="w-3 h-3 text-slate-500" />
-        <span>{latencyMs}ms</span>
-        <span className="hidden sm:inline text-[9px] text-slate-500">Standard</span>
-      </span>
-    );
-  };
-
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-md overflow-y-auto">
         <motion.div
           ref={containerRef}
-          initial={{ opacity: 0, scale: 0.96, y: 15 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 15 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.22, ease: "easeOut" }}
-          className="relative w-full max-w-5xl bg-[#F8F9FB] border border-[#E5E7EB] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col text-slate-900 my-auto"
+          className="relative w-full max-w-4xl bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col text-slate-900 my-auto"
         >
-          {/* Header & Controls Bar */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-white border-b border-[#E5E7EB] z-20">
-            <div className="flex items-center gap-3 min-w-0 pr-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5E35B1] to-[#2979FF] flex items-center justify-center shadow-md text-white shrink-0">
-                <Film className="w-5 h-5" />
+          {/* Mobile-Polished Header Bar */}
+          <div className="flex items-center justify-between px-3.5 py-3 sm:px-5 sm:py-3.5 bg-white border-b border-slate-100 z-20">
+            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#2979FF] flex items-center justify-center text-white shrink-0 shadow-xs">
+                <Film className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
 
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight truncate">
                     {movieTitle}
                   </h2>
-                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-purple-50 text-[#5E35B1] border border-purple-200/80 shrink-0">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100/80 text-[#5E35B1] border border-purple-200/60 shrink-0">
                     {quality}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2.5 text-xs text-slate-500 font-medium mt-0.5 truncate">
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium mt-0.5 truncate">
                   <span>{year}</span>
                   <span>•</span>
                   <span>{duration}</span>
                   <span>•</span>
-                  <span className="text-slate-700 font-semibold truncate">{genre}</span>
+                  <span className="truncate">{genre}</span>
                 </div>
               </div>
             </div>
 
-            {/* Close & Action Buttons */}
+            {/* Vertically Centered Refresh & Close Buttons */}
             <div className="flex items-center gap-1.5 shrink-0">
-              {!isDirectHls && (
-                <button
-                  onClick={() => setIsInterceptorActive((prev) => !prev)}
-                  className={`p-2 sm:px-3 sm:py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isInterceptorActive
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
-                  }`}
-                  title={isInterceptorActive ? "Ad Shield Active (Intercepts popup clicks)" : "Ad Shield Off"}
-                >
-                  <ShieldCheck className={`w-4 h-4 ${isInterceptorActive ? "text-emerald-600" : "text-slate-400"}`} />
-                  <span className="hidden md:inline">{isInterceptorActive ? "Shield ON" : "Shield OFF"}</span>
-                </button>
-              )}
-
-              {!isDirectHls && (
-                <button
-                  onClick={() => setIsMaskEnabled(!isMaskEnabled)}
-                  className={`p-2 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isMaskEnabled
-                      ? "bg-indigo-50 text-[#5E35B1] border-indigo-200"
-                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
-                  }`}
-                  title={isMaskEnabled ? "Header Masking Enabled (Conceals top nav bar)" : "Header Masking Disabled"}
-                >
-                  {isMaskEnabled ? <EyeOff className="w-4 h-4 text-[#5E35B1]" /> : <Eye className="w-4 h-4 text-slate-500" />}
-                  <span className="hidden md:inline">{isMaskEnabled ? "Mask ON" : "Mask OFF"}</span>
-                </button>
-              )}
-
               <button
                 onClick={handleRefreshStream}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer flex items-center justify-center"
                 title="Refresh Stream"
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
 
               <button
-                onClick={toggleFullscreen}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer hidden sm:flex"
-                title="Toggle Fullscreen"
-              >
-                <Maximize className="w-4 h-4" />
-              </button>
-
-              <button
                 onClick={onClose}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer ml-1"
+                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer flex items-center justify-center"
                 title="Close Player"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Player Container */}
-          <div className="relative w-full aspect-video bg-slate-950 border-b border-[#E5E7EB] overflow-hidden group flex items-center justify-center">
+          {/* Video Player Area */}
+          <div className="relative w-full aspect-video bg-slate-950 border-b border-slate-100 overflow-hidden group flex items-center justify-center">
             {isLoading && (
-              <div className="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-6 text-white text-center">
+              <div className="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-xs flex flex-col items-center justify-center gap-2.5 p-6 text-white text-center">
                 <div className="relative flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full border-4 border-indigo-500/30 border-t-[#2979FF] animate-spin" />
-                  <Zap className="w-5 h-5 text-[#2979FF] absolute" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-3 border-indigo-500/30 border-t-[#2979FF] animate-spin" />
+                  <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-[#2979FF] absolute" />
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold tracking-wide">
+                <div className="space-y-0.5">
+                  <p className="text-xs sm:text-sm font-bold tracking-wide">
                     Connecting to <span className="text-indigo-400 font-extrabold">{activeServer?.server_name || "Stream Server"}</span>...
                   </p>
-                  <p className="text-xs text-slate-400">
-                    Optimizing stream buffer latency ({activeServer?.latency_ms || 120}ms)
+                  <p className="text-[11px] text-slate-400">
+                    Optimizing stream latency ({activeServer?.latency_ms || 620}ms)
                   </p>
                 </div>
               </div>
@@ -475,13 +428,13 @@ export function StreamPlayerModal({
 
             {serverError ? (
               <div className="absolute inset-0 z-30 bg-slate-950 flex flex-col items-center justify-center p-6 text-white text-center gap-3">
-                <AlertCircle className="w-10 h-10 text-rose-500" />
-                <p className="text-sm font-bold text-rose-300">{serverError}</p>
+                <AlertCircle className="w-9 h-9 text-rose-500" />
+                <p className="text-xs sm:text-sm font-bold text-rose-300">{serverError}</p>
                 <button
                   onClick={handleRefreshStream}
                   className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-3.5 h-3.5" />
                   Retry Server
                 </button>
               </div>
@@ -492,7 +445,7 @@ export function StreamPlayerModal({
                 controls
                 autoPlay
                 playsInline
-                className="w-full h-full rounded-xl object-contain"
+                className="w-full h-full object-contain"
                 onCanPlay={() => setIsLoading(false)}
               />
             ) : activeServer ? (
@@ -502,7 +455,7 @@ export function StreamPlayerModal({
                   key={activeServer.id}
                   src={activeServer.stream_url}
                   title={`${movieTitle} - ${activeServer.server_name}`}
-                  className="w-full h-full rounded-xl border-0"
+                  className="w-full h-full border-0"
                   style={{
                     position: "absolute",
                     left: 0,
@@ -516,7 +469,7 @@ export function StreamPlayerModal({
               </div>
             ) : null}
 
-            {/* Click-Interceptor Overlay Component to Block Ad Popups & Top-Window Redirects */}
+            {/* Click-Interceptor Overlay Component for Embeds */}
             {isInterceptorActive && !isLoading && !isDirectHls && activeServer?.stream_type === "embed" && (
               <div
                 onClick={(e) => {
@@ -524,132 +477,142 @@ export function StreamPlayerModal({
                   e.stopPropagation();
                   setIsInterceptorActive(false);
                 }}
-                className="absolute inset-0 z-10 bg-slate-950/40 backdrop-blur-[2px] flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 hover:bg-slate-950/20 select-none"
+                className="absolute inset-0 z-10 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 select-none"
               >
-                <div className="bg-slate-900/90 border border-emerald-500/40 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 transform group-hover:scale-105 transition-all">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    <ShieldCheck className="w-6 h-6 animate-pulse text-emerald-400" />
+                <div className="bg-slate-900/90 border border-emerald-500/40 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 transform group-hover:scale-105 transition-all mx-4">
+                  <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                    <ShieldCheck className="w-5 h-5 animate-pulse text-emerald-400" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs sm:text-sm font-extrabold text-white">Ad & Popup Shield Active</p>
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Protected</span>
+                      <p className="text-xs font-extrabold text-white">Ad & Popup Shield Active</p>
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Protected</span>
                     </div>
-                    <p className="text-[11px] text-slate-300 font-medium mt-0.5">Click anywhere to unblock controls & start video</p>
+                    <p className="text-[10px] text-slate-300 font-medium mt-0.5">Click anywhere to start video</p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Quick Header Mask Tuning Overlay (on Hover for IFrame Embeds) */}
-            {!isDirectHls && (
-              <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-2">
-                <Layers className="w-3.5 h-3.5 text-[#2979FF]" />
-                <span>Nav Mask: {isMaskEnabled ? `${maskOffset}px Offset` : "Off"}</span>
-                {isMaskEnabled && (
-                  <div className="flex items-center gap-1 ml-1 border-l border-white/20 pl-2">
+            {/* Ad-Blocker Hint Micro Popup ("Huncho Hint") - Drains over 3s */}
+            <AnimatePresence>
+              {showHint && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute bottom-3 right-3 z-30 max-w-[250px] sm:max-w-[270px] bg-slate-900/95 backdrop-blur-md border border-amber-500/40 text-white rounded-xl shadow-2xl overflow-hidden p-2.5 text-[10px] leading-tight select-none"
+                >
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <div className="flex items-center gap-1 text-amber-400 font-extrabold text-[11px]">
+                      <Sparkles className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
+                      <span>Huncho Hint:</span>
+                    </div>
                     <button
-                      onClick={() => setMaskOffset((prev) => Math.max(0, prev - 8))}
-                      className="px-1 bg-white/20 hover:bg-white/40 rounded font-mono cursor-pointer"
+                      onClick={() => setShowHint(false)}
+                      className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
                     >
-                      -
-                    </button>
-                    <button
-                      onClick={() => setMaskOffset((prev) => prev + 8)}
-                      className="px-1 bg-white/20 hover:bg-white/40 rounded font-mono cursor-pointer"
-                    >
-                      +
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
-                )}
-              </div>
-            )}
+                  <p className="text-slate-200 font-medium pb-1.5">
+                    Using an ad blocker is highly encouraged on all servers to ensure an ad-free viewing experience.
+                  </p>
+
+                  {/* 6s Auto-close Progress Bar Draining */}
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-800 overflow-hidden">
+                    <motion.div
+                      initial={{ width: "100%" }}
+                      animate={{ width: "0%" }}
+                      transition={{ duration: 6, ease: "linear" }}
+                      className="h-full bg-amber-400"
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Server Selection & Speed Rating Bar */}
-          <div className="p-4 sm:p-5 bg-white space-y-3.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Server className="w-4 h-4 text-[#5E35B1]" />
-                <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
-                  Select Streaming Server
-                </h3>
-                <span className="text-[11px] font-extrabold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                  {servers.length} Available
-                </span>
+          {/* Server Selection Section */}
+          <div className="p-3.5 sm:p-5 bg-white space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Server className="w-4 h-4 text-[#5E35B1]" />
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
+                    Select Streaming Server
+                  </h3>
+                  <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {servers.length} Available
+                  </span>
+                </div>
               </div>
 
               {/* Status Report Link */}
-              <button
-                onClick={() => setHasReported(true)}
-                disabled={hasReported}
-                className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-60"
-              >
-                {hasReported ? (
-                  <span className="text-emerald-600 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Issue Reported
-                  </span>
-                ) : (
-                  <>
-                    <AlertCircle className="w-3.5 h-3.5" /> Report Broken Server
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
+                <Info className="w-3.5 h-3.5 text-slate-400" />
+                <button
+                  onClick={() => setHasReported(true)}
+                  disabled={hasReported}
+                  className="hover:text-indigo-600 transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  {hasReported ? (
+                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Issue Reported
+                    </span>
+                  ) : (
+                    "Report Broken Server"
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Server Tabs Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            {/* Server Grid Row - GoMovies Standard listed FIRST with purple active border & FASTEST badge */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
               {servers.map((server) => {
                 const isActive = activeServer?.id === server.id;
                 return (
                   <button
                     key={server.id}
                     onClick={() => handleServerSelect(server)}
-                    className={`relative p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2 ${
+                    className={`relative p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2.5 ${
                       isActive
-                        ? "bg-gradient-to-br from-indigo-50/90 to-purple-50/90 border-[#5E35B1] shadow-md ring-2 ring-[#5E35B1]/20"
-                        : "bg-white border-[#E5E7EB] hover:border-slate-300 hover:bg-slate-50/80 shadow-xs"
+                        ? "bg-purple-50/50 border-2 border-[#5E35B1] shadow-xs"
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80"
                     }`}
                   >
-                    {/* Badge for Fastest */}
+                    {/* Badge for FASTEST */}
                     {server.is_fastest && (
-                      <div className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#5E35B1] to-[#2979FF] text-white text-[9px] font-extrabold shadow-sm flex items-center gap-0.5">
+                      <div className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-[#2979FF] text-white text-[9px] font-black shadow-xs flex items-center gap-0.5">
                         <Sparkles className="w-2.5 h-2.5 text-amber-300 fill-amber-300" />
-                        <span>⚡ FASTEST</span>
+                        <Zap className="w-2.5 h-2.5 text-amber-300 fill-amber-300" />
+                        <span>FASTEST</span>
                       </div>
                     )}
 
-                    <div className="space-y-0.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <span
-                          className={`text-xs font-black truncate ${
-                            isActive ? "text-[#5E35B1]" : "text-slate-900"
-                          }`}
-                        >
-                          {server.server_name}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium">{server.quality}</p>
+                    <div className="space-y-0.5 pr-1">
+                      <span
+                        className={`text-xs font-black block truncate ${
+                          isActive ? "text-slate-900" : "text-slate-900"
+                        }`}
+                      >
+                        {server.server_name}
+                      </span>
+                      <p className="text-[10px] text-slate-400 font-medium">{server.quality}</p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/50">
-                      {renderSpeedBadge(server.latency_ms, server.is_fastest)}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-50 text-[#2979FF]">
+                        <Zap className="w-3 h-3 fill-[#2979FF]" />
+                        <span>{server.latency_ms}ms</span>
+                      </span>
+
                       <ShieldCheck className={`w-3.5 h-3.5 ${isActive ? "text-[#5E35B1]" : "text-slate-300"}`} />
                     </div>
                   </button>
                 );
               })}
-            </div>
-
-            {/* Security & Health Assurance Footer */}
-            <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>SSL Encrypted • High Bitrate Clean Feed • No Popups</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-400">
-                <span>Active Server: <strong className="text-slate-700">{activeServer?.server_name}</strong></span>
-              </div>
             </div>
           </div>
         </motion.div>

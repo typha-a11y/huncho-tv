@@ -9,6 +9,7 @@ import logoImg from "../assets/logo.png";
 
 interface NavbarProps {
   onSelectDiscover?: () => void;
+  onSelectLiveSports?: () => void;
   onSelectZilizotafsiriwa?: () => void;
   onSelectWatchlist?: () => void;
   onSelectDownloads?: () => void;
@@ -16,7 +17,7 @@ interface NavbarProps {
   activeTab?: string | number;
 }
 
-export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatchlist, onSelectDownloads, onSelectProfile, activeTab }: NavbarProps) {
+export function Navbar({ onSelectDiscover, onSelectLiveSports, onSelectZilizotafsiriwa, onSelectWatchlist, onSelectDownloads, onSelectProfile, activeTab }: NavbarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -50,12 +51,21 @@ export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatc
             />
           </div>
 
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+          <div className="hidden md:flex items-center gap-5 lg:gap-6 text-sm font-medium text-slate-600">
             <button 
               onClick={onSelectDiscover} 
               className={`hover:text-indigo-600 transition-colors cursor-pointer ${activeTab === 'home' || activeTab === 'discover' ? 'text-indigo-600 font-bold' : ''}`}
             >
               Discover
+            </button>
+            <button 
+              onClick={onSelectLiveSports} 
+              className={`hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'live-sports' ? 'text-emerald-600 font-bold' : ''}`}
+            >
+              <span>Live Sports & TV</span>
+              <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full uppercase animate-pulse">
+                ⚡ SOON
+              </span>
             </button>
             <button 
               onClick={onSelectZilizotafsiriwa} 
@@ -89,6 +99,7 @@ export function Navbar({ onSelectDiscover, onSelectZilizotafsiriwa, onSelectWatc
               )}
             </button>
           </div>
+
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Quick Watchlist & Download shortcuts (Desktop/Tablet only to keep mobile header clean) */}

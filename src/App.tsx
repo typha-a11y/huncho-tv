@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Bookmark, Download, User as UserIcon, Flame } from "lucide-react";
+import { Bookmark, Download, User as UserIcon, Flame, Radio } from "lucide-react";
 import { Navbar } from "./components/Navbar";
 import { HeroBanner } from "./components/HeroBanner";
 import { BentoGrid, CategoryCarousel } from "./components/BentoGrid";
@@ -17,7 +17,9 @@ import { ProfileView } from "./components/ProfileView";
 import { DownloadsView } from "./components/DownloadsView";
 import { HistoryView } from "./components/HistoryView";
 import { ZilizotafsiriwaView, ZilizotafsiriwaCarousel } from "./components/ZilizotafsiriwaView";
+import { LiveSportsView } from "./components/LiveSportsView";
 import { MovieGrid } from "./components/MovieGrid";
+
 import { WatchlistGrid } from "./components/WatchlistGrid";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { Recommendations } from "./components/Recommendations";
@@ -198,20 +200,21 @@ export default function App() {
         <Navbar 
           activeTab={activeTab}
           onSelectDiscover={() => setActiveTab("home")} 
+          onSelectLiveSports={() => setActiveTab("live-sports")}
           onSelectZilizotafsiriwa={() => setActiveTab("zilizotafsiriwa")}
           onSelectWatchlist={() => setActiveTab("watchlist")}
           onSelectDownloads={() => setActiveTab("downloads")}
           onSelectProfile={() => setActiveTab("profile")}
         />
         
-        <main className="max-w-7xl mx-auto px-4 xs:px-5 sm:px-6 md:px-8 pt-2 pb-4">
+        <main className={cn("w-full mx-auto pt-2 pb-4", activeTab === "profile" ? "px-0 max-w-full" : "max-w-7xl px-4 xs:px-5 sm:px-6 md:px-8")}>
         
         {/* Genre & Nav Filter Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-2.5 my-2 sticky top-16 z-30 bg-[#F8F9FB]/90 backdrop-blur-md">
+        <div className={cn("flex items-center gap-2 overflow-x-auto hide-scrollbar py-3 my-2 sticky top-16 z-30 bg-[#F8F9FB]/90 backdrop-blur-md px-1", activeTab === "profile" ? "px-4 sm:px-6 w-full" : "")}>
           <button
             onClick={() => setActiveTab("home")}
             className={cn(
-              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none",
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none shrink-0",
               activeTab === "home" || activeTab === "discover"
                 ? "text-white font-semibold" 
                 : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
@@ -227,10 +230,42 @@ export default function App() {
             <span className="relative z-10">Discover</span>
           </button>
 
+          {/* Live Sports & TV Category Tab */}
+          <button
+            onClick={() => setActiveTab("live-sports")}
+            className={cn(
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-3.5 py-1.5 outline-none select-none flex items-center gap-1.5 shrink-0",
+              activeTab === "live-sports"
+                ? "text-white font-semibold" 
+                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 bg-slate-100/60"
+            )}
+          >
+            {activeTab === "live-sports" && (
+              <motion.div
+                layoutId="activeGenrePill"
+                className="absolute inset-0 bg-emerald-600 rounded-full shadow-md shadow-emerald-500/25 z-0"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            
+            <span className="relative z-10 flex items-center gap-1.5">
+              <Radio className={cn("w-3.5 h-3.5 text-emerald-500 shrink-0", activeTab === "live-sports" && "text-white")} />
+              <span>Live Sports & TV</span>
+              <span className={cn(
+                "text-[9px] font-extrabold px-1.5 py-0.5 rounded-full leading-none tracking-tight",
+                activeTab === "live-sports"
+                  ? "bg-amber-400 text-slate-950"
+                  : "bg-emerald-100 text-emerald-800"
+              )}>
+                ⚡ SOON
+              </span>
+            </span>
+          </button>
+
           <button
             onClick={() => setActiveTab("zilizotafsiriwa")}
             className={cn(
-              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-bold text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-bold text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5 shrink-0",
               activeTab === "zilizotafsiriwa"
                 ? "text-white font-extrabold" 
                 : "text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900"
@@ -258,7 +293,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("watchlist")}
             className={cn(
-              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5 shrink-0",
               activeTab === "watchlist"
                 ? "text-white font-semibold" 
                 : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
@@ -288,7 +323,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("downloads")}
             className={cn(
-              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5 shrink-0",
               activeTab === "downloads"
                 ? "text-white font-semibold" 
                 : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
@@ -318,7 +353,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("profile")}
             className={cn(
-              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5",
+              "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none flex items-center gap-1.5 shrink-0",
               activeTab === "profile"
                 ? "text-white font-semibold" 
                 : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
@@ -347,7 +382,7 @@ export default function App() {
                 key={genre.id}
                 onClick={() => setActiveTab(genre.id)}
                 className={cn(
-                  "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none",
+                  "relative whitespace-nowrap transition-colors duration-200 cursor-pointer font-medium text-xs rounded-full px-4 py-1.5 outline-none select-none shrink-0",
                   isActive
                     ? "text-white font-semibold" 
                     : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/60"
@@ -367,7 +402,17 @@ export default function App() {
         </div>
 
         <AnimatePresence mode="wait">
-          {activeTab === "zilizotafsiriwa" ? (
+          {activeTab === "live-sports" ? (
+            <motion.div
+              key="live-sports"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <LiveSportsView onExplore={() => setActiveTab("home")} />
+            </motion.div>
+          ) : activeTab === "zilizotafsiriwa" ? (
             <motion.div
               key="zilizotafsiriwa"
               initial={{ opacity: 0, y: 12 }}
