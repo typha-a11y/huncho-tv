@@ -66,6 +66,21 @@ export function StreamPlayerModal({
   const [hasReported, setHasReported] = useState(false);
   const [isInterceptorActive, setIsInterceptorActive] = useState(true);
 
+  // Global popup interceptor overriding window.open while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOpen = window.open;
+    window.open = (...args: any[]) => {
+      console.log("Blocked popup redirect");
+      return null;
+    };
+
+    return () => {
+      window.open = originalOpen;
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       setIsInterceptorActive(true);
