@@ -20,6 +20,10 @@ import { StreamServer } from "../types";
 import { createClient } from "@supabase/supabase-js";
 import Hls from "hls.js";
 
+// Backend API Base URL
+const RENDER_BACKEND_URL = "https://huncho-tv-backend.onrender.com";
+const BACKEND_API_BASE_URL = RENDER_BACKEND_URL;
+
 // Initialize optional Supabase client
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://huncho-tv.supabase.co";
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || "";
@@ -93,9 +97,31 @@ export function StreamPlayerModal({
   // Normalize effective Movie/IMDb ID
   const effectiveId = imdbId || (typeof movieId === "string" && movieId.startsWith("tt") ? movieId : `tt30851137`);
 
-  // Default generated servers if DB query has no custom records
+  // Helper check for Direct HLS stream
+  const isDirectHls = Boolean(
+    activeServer &&
+      (activeServer.stream_type === "direct_hls" ||
+        activeServer.stream_type === "direct_mp4" ||
+        activeServer.stream_url?.includes(".m3u8") ||
+        activeServer.stream_url?.includes("/api/v1/proxy-hls"))
+  );
+
+  // Default generated servers if DB / Render API queries have no custom records
   const generateDefaultServers = (targetId: string, titleStr: string): StreamServer[] => {
     return [
+      {
+        id: "srv-[#2979FF]-render-hls",
+        movie_id: targetId,
+        title: titleStr,
+        server_key: "render_hls",
+        server_name: "Render Direct HLS Stream",
+        stream_url: `${RENDER_BACKEND_URL}/api/v1/proxy-hls?imdb_id=${targetId}`,
+        stream_type: "direct_hls",
+        quality: "1080p HD",
+        latency_ms: 120,
+        is_active: true,
+        is_fastest: true
+      },
       {
         id: "srv-dulo-vip",
         movie_id: targetId,
@@ -106,8 +132,7 @@ export function StreamPlayerModal({
         stream_type: "embed",
         quality: "1080p HD",
         latency_ms: 180,
-        is_active: true,
-        is_fastest: true
+        is_active: true
       },
       {
         id: "srv-flixhq-pro",
@@ -148,7 +173,7 @@ export function StreamPlayerModal({
     ];
   };
 
-  // Fetch servers from Supabase or fallback
+  // Fetch servers from Render backend API, Supabase, or fallback
   useEffect(() => {
     if (!isOpen) return;
 
@@ -157,10 +182,26 @@ export function StreamPlayerModal({
     setServerError(null);
 
     const fetchServers = async () => {
-      let dbServers: StreamServer[] = [];
+      let fetchedServers: StreamServer[] = [];
 
+      // Try fetching from live Render backend API first
       try {
-        if (supabaseClient) {
+        const renderRes = await fetch(`${BACKEND_API_BASE_URL}/api/v1/stream-servers?movie_id=${effectiveId}`);
+        if (renderRes.ok) {
+          const data = await renderRes.json();
+          if (Array.isArray(data) && data.length > 0) {
+            fetchedServers = data;
+          } else if (data?.servers && Array.isArray(data.servers) && data.servers.length > 0) {
+            fetchedServers = data.servers;
+          }
+        }
+      } catch (err) {
+        console.warn("Render production API stream_servers fetch fallback:", err);
+      }
+
+      // Try fetching from Supabase if Render backend yielded no custom servers
+      if (fetchedServers.length === 0 && supabaseClient) {
+        try {
           const { data, error } = await supabaseClient
             .from("stream_servers")
             .select("*")
@@ -169,25 +210,32 @@ export function StreamPlayerModal({
             .order("latency_ms", { ascending: true });
 
           if (!error && data && data.length > 0) {
-            dbServers = data as StreamServer[];
+            fetchedServers = data as StreamServer[];
           }
+        } catch (err) {
+          console.warn("Supabase stream_servers fetch error:", err);
         }
-      } catch (err) {
-        console.warn("Supabase stream_servers fetch error:", err);
       }
 
       if (!isMounted) return;
 
-      if (dbServers.length === 0) {
-        dbServers = generateDefaultServers(effectiveId, movieTitle);
+      if (fetchedServers.length === 0) {
+        fetchedServers = generateDefaultServers(effectiveId, movieTitle);
       }
 
       // Mark the server with minimum latency_ms as fastest
-      const minLatency = Math.min(...dbServers.map((s) => s.latency_ms || 999));
-      const formatted = dbServers.map((s) => ({
-        ...s,
-        is_fastest: s.latency_ms === minLatency
-      }));
+      const minLatency = Math.min(...fetchedServers.map((s) => s.latency_ms || 999));
+      const formatted = fetchedServers.map((s) => {
+        let fullStreamUrl = s.stream_url;
+        if (fullStreamUrl && fullStreamUrl.startsWith("/")) {
+          fullStreamUrl = `${BACKEND_API_BASE_URL}${fullStreamUrl}`;
+        }
+        return {
+          ...s,
+          stream_url: fullStreamUrl,
+          is_fastest: s.latency_ms === minLatency
+        };
+      });
 
       setServers(formatted);
       const fastestServer = formatted.find((s) => s.is_fastest) || formatted[0];
@@ -202,29 +250,48 @@ export function StreamPlayerModal({
     };
   }, [isOpen, effectiveId, movieTitle]);
 
-  // Handle direct HLS stream loading if server_type === 'direct_hls'
+  // Handle Direct HLS stream loading using Hls.js
   useEffect(() => {
-    if (!activeServer || activeServer.stream_type !== "direct_hls" || !videoRef.current) return;
+    if (!activeServer || !isDirectHls || !videoRef.current) return;
 
     const video = videoRef.current;
     let hls: Hls | null = null;
 
+    const fullUrl = activeServer.stream_url.startsWith("/")
+      ? `${BACKEND_API_BASE_URL}${activeServer.stream_url}`
+      : activeServer.stream_url;
+
     if (Hls.isSupported()) {
-      hls = new Hls();
-      hls.loadSource(activeServer.stream_url);
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true
+      });
+      hls.loadSource(fullUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsLoading(false);
+        video.play().catch(() => {});
+      });
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          console.warn("HLS.js fatal playback error:", data);
+          setIsLoading(false);
+        }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = activeServer.stream_url;
-      video.addEventListener("loadedmetadata", () => setIsLoading(false));
+      video.src = fullUrl;
+      video.addEventListener("loadedmetadata", () => {
+        setIsLoading(false);
+        video.play().catch(() => {});
+      });
     }
 
     return () => {
-      if (hls) hls.destroy();
+      if (hls) {
+        hls.destroy();
+      }
     };
-  }, [activeServer]);
+  }, [activeServer, isDirectHls]);
 
   // Server switch handler
   const handleServerSelect = (server: StreamServer) => {
@@ -247,7 +314,7 @@ export function StreamPlayerModal({
     }
   };
 
-  // Reload current server stream iframe
+  // Reload current server stream
   const handleRefreshStream = () => {
     setIsLoading(true);
     setServerError(null);
@@ -331,31 +398,35 @@ export function StreamPlayerModal({
 
             {/* Close & Action Buttons */}
             <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => setIsInterceptorActive((prev) => !prev)}
-                className={`p-2 sm:px-3 sm:py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isInterceptorActive
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
-                }`}
-                title={isInterceptorActive ? "Ad Shield Active (Intercepts popup clicks)" : "Ad Shield Off"}
-              >
-                <ShieldCheck className={`w-4 h-4 ${isInterceptorActive ? "text-emerald-600" : "text-slate-400"}`} />
-                <span className="hidden md:inline">{isInterceptorActive ? "Shield ON" : "Shield OFF"}</span>
-              </button>
+              {!isDirectHls && (
+                <button
+                  onClick={() => setIsInterceptorActive((prev) => !prev)}
+                  className={`p-2 sm:px-3 sm:py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isInterceptorActive
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                  }`}
+                  title={isInterceptorActive ? "Ad Shield Active (Intercepts popup clicks)" : "Ad Shield Off"}
+                >
+                  <ShieldCheck className={`w-4 h-4 ${isInterceptorActive ? "text-emerald-600" : "text-slate-400"}`} />
+                  <span className="hidden md:inline">{isInterceptorActive ? "Shield ON" : "Shield OFF"}</span>
+                </button>
+              )}
 
-              <button
-                onClick={() => setIsMaskEnabled(!isMaskEnabled)}
-                className={`p-2 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isMaskEnabled
-                    ? "bg-indigo-50 text-[#5E35B1] border-indigo-200"
-                    : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
-                }`}
-                title={isMaskEnabled ? "Header Masking Enabled (Conceals top nav bar)" : "Header Masking Disabled"}
-              >
-                {isMaskEnabled ? <EyeOff className="w-4 h-4 text-[#5E35B1]" /> : <Eye className="w-4 h-4 text-slate-500" />}
-                <span className="hidden md:inline">{isMaskEnabled ? "Mask ON" : "Mask OFF"}</span>
-              </button>
+              {!isDirectHls && (
+                <button
+                  onClick={() => setIsMaskEnabled(!isMaskEnabled)}
+                  className={`p-2 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isMaskEnabled
+                      ? "bg-indigo-50 text-[#5E35B1] border-indigo-200"
+                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                  }`}
+                  title={isMaskEnabled ? "Header Masking Enabled (Conceals top nav bar)" : "Header Masking Disabled"}
+                >
+                  {isMaskEnabled ? <EyeOff className="w-4 h-4 text-[#5E35B1]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                  <span className="hidden md:inline">{isMaskEnabled ? "Mask ON" : "Mask OFF"}</span>
+                </button>
+              )}
 
               <button
                 onClick={handleRefreshStream}
@@ -396,7 +467,7 @@ export function StreamPlayerModal({
                     Connecting to <span className="text-indigo-400 font-extrabold">{activeServer?.server_name || "Stream Server"}</span>...
                   </p>
                   <p className="text-xs text-slate-400">
-                    Optimizing buffer latency ({activeServer?.latency_ms || 200}ms) & masking server header
+                    Optimizing stream buffer latency ({activeServer?.latency_ms || 120}ms)
                   </p>
                 </div>
               </div>
@@ -408,23 +479,24 @@ export function StreamPlayerModal({
                 <p className="text-sm font-bold text-rose-300">{serverError}</p>
                 <button
                   onClick={handleRefreshStream}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Retry Server
                 </button>
               </div>
-            ) : activeServer?.stream_type === "direct_hls" || activeServer?.stream_type === "direct_mp4" ? (
+            ) : isDirectHls ? (
+              /* Native HTML5 HLS Video Player */
               <video
                 ref={videoRef}
                 controls
                 autoPlay
                 playsInline
-                className="w-full h-full object-contain"
+                className="w-full h-full rounded-xl object-contain"
                 onCanPlay={() => setIsLoading(false)}
               />
             ) : activeServer ? (
-              /* Top-Nav Masking Container Strategy */
+              /* Top-Nav Masking Container Strategy for IFrame Embed */
               <div className="relative w-full h-full overflow-hidden bg-slate-950">
                 <iframe
                   key={activeServer.id}
@@ -445,7 +517,7 @@ export function StreamPlayerModal({
             ) : null}
 
             {/* Click-Interceptor Overlay Component to Block Ad Popups & Top-Window Redirects */}
-            {isInterceptorActive && !isLoading && activeServer?.stream_type !== "direct_hls" && activeServer?.stream_type !== "direct_mp4" && (
+            {isInterceptorActive && !isLoading && !isDirectHls && activeServer?.stream_type === "embed" && (
               <div
                 onClick={(e) => {
                   e.preventDefault();
@@ -469,27 +541,29 @@ export function StreamPlayerModal({
               </div>
             )}
 
-            {/* Quick Header Mask Tuning Overlay (on Hover) */}
-            <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-2">
-              <Layers className="w-3.5 h-3.5 text-[#2979FF]" />
-              <span>Nav Mask: {isMaskEnabled ? `${maskOffset}px Offset` : "Off"}</span>
-              {isMaskEnabled && (
-                <div className="flex items-center gap-1 ml-1 border-l border-white/20 pl-2">
-                  <button
-                    onClick={() => setMaskOffset((prev) => Math.max(0, prev - 8))}
-                    className="px-1 bg-white/20 hover:bg-white/40 rounded font-mono"
-                  >
-                    -
-                  </button>
-                  <button
-                    onClick={() => setMaskOffset((prev) => prev + 8)}
-                    className="px-1 bg-white/20 hover:bg-white/40 rounded font-mono"
-                  >
-                    +
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Quick Header Mask Tuning Overlay (on Hover for IFrame Embeds) */}
+            {!isDirectHls && (
+              <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5 text-[#2979FF]" />
+                <span>Nav Mask: {isMaskEnabled ? `${maskOffset}px Offset` : "Off"}</span>
+                {isMaskEnabled && (
+                  <div className="flex items-center gap-1 ml-1 border-l border-white/20 pl-2">
+                    <button
+                      onClick={() => setMaskOffset((prev) => Math.max(0, prev - 8))}
+                      className="px-1 bg-white/20 hover:bg-white/40 rounded font-mono cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <button
+                      onClick={() => setMaskOffset((prev) => prev + 8)}
+                      className="px-1 bg-white/20 hover:bg-white/40 rounded font-mono cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Server Selection & Speed Rating Bar */}
@@ -524,7 +598,7 @@ export function StreamPlayerModal({
             </div>
 
             {/* Server Tabs Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               {servers.map((server) => {
                 const isActive = activeServer?.id === server.id;
                 return (
@@ -583,3 +657,4 @@ export function StreamPlayerModal({
     </AnimatePresence>
   );
 }
+
