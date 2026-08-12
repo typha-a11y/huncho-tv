@@ -422,7 +422,6 @@ export function StreamPlayerModal({
                     top: isMaskEnabled ? `-${maskOffset}px` : "0px",
                     height: isMaskEnabled ? `calc(100% + ${maskOffset}px)` : "100%"
                   }}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
                   allowFullScreen
                   allow="autoplay; encrypted-media; picture-in-picture"
                   onLoad={() => setIsLoading(false)}
@@ -434,13 +433,13 @@ export function StreamPlayerModal({
             {isInterceptorActive && !isLoading && activeServer?.stream_type !== "direct_hls" && activeServer?.stream_type !== "direct_mp4" && (
               <div
                 onClick={(e) => {
-                  e.stopPropagation();
                   e.preventDefault();
+                  e.stopPropagation();
                   setIsInterceptorActive(false);
                 }}
-                className="absolute inset-0 z-20 bg-slate-950/40 backdrop-blur-[2px] flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 hover:bg-slate-950/20"
+                className="absolute inset-0 z-10 bg-slate-950/40 backdrop-blur-[2px] flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 hover:bg-slate-950/20 select-none"
               >
-                <div className="bg-slate-900/90 border border-emerald-500/40 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 transform group-hover:scale-105 transition-all select-none">
+                <div className="bg-slate-900/90 border border-emerald-500/40 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 transform group-hover:scale-105 transition-all">
                   <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                     <ShieldCheck className="w-6 h-6 animate-pulse text-emerald-400" />
                   </div>
