@@ -113,6 +113,20 @@ export interface UserDownloadItem {
   source_type?: "Local Files" | "Received" | "Cloud";
 }
 
+export interface StreamServer {
+  id: string;
+  movie_id: string;
+  title?: string;
+  server_key: string;
+  server_name: string;
+  stream_url: string;
+  stream_type: "embed" | "direct_hls" | "direct_mp4";
+  quality: string;
+  latency_ms: number;
+  is_active: boolean;
+  is_fastest?: boolean;
+}
+
 export interface ZilizotafsiriwaMovie {
   id: string;
   title: string;
