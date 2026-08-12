@@ -64,6 +64,13 @@ export function StreamPlayerModal({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [hasReported, setHasReported] = useState(false);
+  const [isInterceptorActive, setIsInterceptorActive] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsInterceptorActive(true);
+    }
+  }, [isOpen, activeServer?.id]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -310,6 +317,19 @@ export function StreamPlayerModal({
             {/* Close & Action Buttons */}
             <div className="flex items-center gap-1.5 shrink-0">
               <button
+                onClick={() => setIsInterceptorActive((prev) => !prev)}
+                className={`p-2 sm:px-3 sm:py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isInterceptorActive
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                }`}
+                title={isInterceptorActive ? "Ad Shield Active (Intercepts popup clicks)" : "Ad Shield Off"}
+              >
+                <ShieldCheck className={`w-4 h-4 ${isInterceptorActive ? "text-emerald-600" : "text-slate-400"}`} />
+                <span className="hidden md:inline">{isInterceptorActive ? "Shield ON" : "Shield OFF"}</span>
+              </button>
+
+              <button
                 onClick={() => setIsMaskEnabled(!isMaskEnabled)}
                 className={`p-2 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
                   isMaskEnabled
@@ -402,12 +422,38 @@ export function StreamPlayerModal({
                     top: isMaskEnabled ? `-${maskOffset}px` : "0px",
                     height: isMaskEnabled ? `calc(100% + ${maskOffset}px)` : "100%"
                   }}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
                   allowFullScreen
                   allow="autoplay; encrypted-media; picture-in-picture"
                   onLoad={() => setIsLoading(false)}
                 />
               </div>
             ) : null}
+
+            {/* Click-Interceptor Overlay Component to Block Ad Popups & Top-Window Redirects */}
+            {isInterceptorActive && !isLoading && activeServer?.stream_type !== "direct_hls" && activeServer?.stream_type !== "direct_mp4" && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIsInterceptorActive(false);
+                }}
+                className="absolute inset-0 z-20 bg-slate-950/40 backdrop-blur-[2px] flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 hover:bg-slate-950/20"
+              >
+                <div className="bg-slate-900/90 border border-emerald-500/40 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 transform group-hover:scale-105 transition-all select-none">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <ShieldCheck className="w-6 h-6 animate-pulse text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs sm:text-sm font-extrabold text-white">Ad & Popup Shield Active</p>
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Protected</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 font-medium mt-0.5">Click anywhere to unblock controls & start video</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Quick Header Mask Tuning Overlay (on Hover) */}
             <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-2">
