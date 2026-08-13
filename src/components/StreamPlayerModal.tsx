@@ -48,6 +48,10 @@ interface StreamPlayerModalProps {
   duration?: string | number;
   quality?: string;
   genre?: string;
+  isLiveStream?: boolean;
+  channelSlug?: string;
+  directStreamUrl?: string;
+  streamType?: string;
 }
 
 export function StreamPlayerModal({
@@ -59,7 +63,11 @@ export function StreamPlayerModal({
   year = "2026",
   duration = "90 min",
   quality = "1080p HD",
-  genre = "Adventure"
+  genre = "Adventure",
+  isLiveStream = false,
+  channelSlug,
+  directStreamUrl,
+  streamType = "direct_hls"
 }: StreamPlayerModalProps) {
   const [servers, setServers] = useState<StreamServer[]>([]);
   const [activeServer, setActiveServer] = useState<StreamServer | null>(null);
@@ -114,11 +122,13 @@ export function StreamPlayerModal({
 
   // Helper check for Direct HLS stream
   const isDirectHls = Boolean(
-    activeServer &&
+    isLiveStream ||
+    (activeServer &&
       (activeServer.stream_type === "direct_hls" ||
         activeServer.stream_type === "direct_mp4" ||
         activeServer.stream_url?.includes(".m3u8") ||
-        activeServer.stream_url?.includes("/api/v1/proxy-hls"))
+        activeServer.stream_url?.includes("/api/v1/proxy-hls") ||
+        activeServer.stream_url?.includes("/api/v1/resolve-live")))
   );
 
   // Default generated servers with GoMovies Standard FIRST as requested
@@ -197,6 +207,54 @@ export function StreamPlayerModal({
     setServerError(null);
 
     const fetchServers = async () => {
+      // Direct Live Stream Adapter Flow
+      if (isLiveStream) {
+        const targetSlug = channelSlug || (typeof movieId === "string" ? movieId : "espn-hd");
+        let resolvedUrl = directStreamUrl || `${BACKEND_API_BASE_URL}/api/v1/proxy-hls?imdb_id=${targetSlug}`;
+
+        try {
+          const liveRes = await fetch(`${BACKEND_API_BASE_URL}/api/v1/resolve-live?channel=${encodeURIComponent(targetSlug)}`);
+          if (liveRes.ok) {
+            const liveData = await liveRes.json();
+            if (liveData?.stream_url) {
+              resolvedUrl = liveData.stream_url;
+            } else if (liveData?.hls_url) {
+              resolvedUrl = liveData.hls_url;
+            } else if (liveData?.url) {
+              resolvedUrl = liveData.url;
+            } else if (liveData?.proxy_url) {
+              resolvedUrl = liveData.proxy_url;
+            }
+          }
+        } catch (err) {
+          console.warn("Resolve live stream error, falling back to proxy URL:", err);
+        }
+
+        if (resolvedUrl.startsWith("/")) {
+          resolvedUrl = `${BACKEND_API_BASE_URL}${resolvedUrl}`;
+        }
+
+        const liveServer: StreamServer = {
+          id: `srv-live-${targetSlug}`,
+          movie_id: targetSlug,
+          title: movieTitle,
+          server_key: "live_hls",
+          server_name: "Huncho Live HLS Gateway",
+          stream_url: resolvedUrl,
+          stream_type: (streamType as any) || "direct_hls",
+          quality: "1080p 60fps",
+          latency_ms: 60,
+          is_active: true,
+          is_fastest: true
+        };
+
+        if (!isMounted) return;
+        setServers([liveServer]);
+        setActiveServer(liveServer);
+        setIsLoading(false);
+        return;
+      }
+
       let fetchedServers: StreamServer[] = [];
 
       // Try fetching from live Render backend API first

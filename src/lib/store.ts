@@ -32,7 +32,22 @@ interface AppState {
   isVideoPlayerOpen: boolean;
   videoStreamUrl: string | null;
   videoStreamTitle: string | null;
-  setVideoPlayerOpen: (isOpen: boolean, streamUrl?: string | null, streamTitle?: string | null) => void;
+  isLiveStream?: boolean;
+  channelSlug?: string | null;
+  liveCategory?: string | null;
+  liveStreamType?: string | null;
+  setVideoPlayerOpen: (
+    isOpen: boolean,
+    streamUrl?: string | null,
+    streamTitle?: string | null,
+    livePayload?: {
+      isLiveStream?: boolean;
+      title?: string;
+      category?: string;
+      streamType?: string;
+      channelSlug?: string;
+    }
+  ) => void;
 
   autoPlayTrailer: boolean;
   setAutoPlayTrailer: (autoPlay: boolean) => void;
@@ -111,8 +126,20 @@ export const useStore = create<AppState>()(
       isVideoPlayerOpen: false,
       videoStreamUrl: null,
       videoStreamTitle: null,
-      setVideoPlayerOpen: (isOpen, streamUrl = null, streamTitle = null) => 
-        set({ isVideoPlayerOpen: isOpen, videoStreamUrl: streamUrl, videoStreamTitle: streamTitle }),
+      isLiveStream: false,
+      channelSlug: null,
+      liveCategory: null,
+      liveStreamType: null,
+      setVideoPlayerOpen: (isOpen, streamUrl = null, streamTitle = null, livePayload = {}) => 
+        set({ 
+          isVideoPlayerOpen: isOpen, 
+          videoStreamUrl: streamUrl, 
+          videoStreamTitle: livePayload?.title || streamTitle,
+          isLiveStream: Boolean(livePayload?.isLiveStream),
+          channelSlug: livePayload?.channelSlug || null,
+          liveCategory: livePayload?.category || "Live TV",
+          liveStreamType: livePayload?.streamType || "direct_hls"
+        }),
 
       // Settings
       autoPlayTrailer: false,
