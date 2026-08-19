@@ -10,36 +10,25 @@ const containerVariants: Variants = {
   hidden: {},
   show: {
     transition: {
-      staggerChildren: 0.04,
-      delayChildren: 0.01
+      staggerChildren: 0.02,
     }
   }
 };
 
 const cardVariants: Variants = {
   hidden: { 
-    scale: 0.82, 
-    y: 36, 
-    rotateX: 18, 
-    rotateY: -3,
-    transformPerspective: 1100,
-    transformOrigin: "center bottom"
+    opacity: 0,
+    y: 10
   },
   show: { 
-    scale: 1, 
+    opacity: 1, 
     y: 0, 
-    rotateX: 0, 
-    rotateY: 0,
-    transformPerspective: 1100,
-    transformOrigin: "center bottom",
-    transition: { type: "spring", stiffness: 300, damping: 22, mass: 0.8 } 
+    transition: { duration: 0.2, ease: "easeOut" } 
   },
   exit: {
-    scale: 0.84,
-    y: 20,
-    rotateX: -10,
-    transformPerspective: 1100,
-    transition: { duration: 0.18, ease: [0.4, 0, 1, 1] }
+    opacity: 0,
+    scale: 0.95,
+    transition: { duration: 0.15 }
   }
 };
 
@@ -185,9 +174,9 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
                 aria-label={`View details for ${movie.title || movie.original_title}`}
                 variants={cardVariants}
                 layout
-                whileHover={{ y: -6, scale: 1.025, rotateX: -2, rotateY: 1 }}
-                whileTap={{ scale: 0.96, y: -2, rotateX: 3 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                whileHover={{ y: -3, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.15 }}
                 onClick={() => setSelectedMovieId(movie.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {

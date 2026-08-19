@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { WatchHistoryItem, UserProfile, UserDownloadItem } from "../types";
 import { 
+  fetchUserProfile,
   fetchUserWatchlist, 
   addToUserWatchlist, 
   removeFromUserWatchlist,
@@ -12,13 +13,17 @@ import {
   saveUserDownloadItem,
   deleteUserDownloadItem,
   deleteAllUserDownloads,
-  syncUserProfile
+  syncUserProfile,
+  signOutUser
 } from "./syncService";
 
 interface AppState {
   // Auth & Sync state
   user: UserProfile | null;
   setUser: (user: UserProfile | null) => void;
+  updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  refreshUserProfile: () => Promise<void>;
+  logout: () => Promise<void>;
   isSyncing: boolean;
   lastSyncedAt: number | null;
   syncCloudData: (targetUserId?: string) => Promise<void>;
@@ -95,21 +100,64 @@ export const useStore = create<AppState>()(
         }
       },
 
+      updateUserProfile: async (updates) => {
+        const currentUser = get().user;
+        if (!currentUser) return;
+
+        const updatedUser: UserProfile = {
+          ...currentUser,
+          ...updates,
+        };
+
+        set({ user: updatedUser });
+        await syncUserProfile(updatedUser);
+      },
+
+      refreshUserProfile: async () => {
+        const userId = get().user?.id;
+        if (!userId) return;
+
+        try {
+          const freshProfile = await fetchUserProfile(userId, get().user);
+          if (freshProfile) {
+            set({ user: freshProfile });
+          }
+        } catch (err) {
+          console.warn("refreshUserProfile failed:", err);
+        }
+      },
+
+      logout: async () => {
+        await signOutUser();
+        set({
+          user: null,
+          watchlist: [],
+          history: {},
+          downloads: [],
+          isSyncing: false,
+          lastSyncedAt: null,
+        });
+      },
+
       syncCloudData: async (targetUserId) => {
         const userId = targetUserId || get().user?.id;
         if (!userId) return;
 
         set({ isSyncing: true });
         try {
-          const [cloudWatchlist, cloudHistory, cloudDownloads] = await Promise.all([
+          const [cloudProfile, cloudWatchlist, cloudHistory, cloudDownloads] = await Promise.all([
+            fetchUserProfile(userId, get().user),
             fetchUserWatchlist(userId),
             fetchUserHistory(userId),
             fetchUserDownloads(userId),
           ]);
 
           set((state) => {
+            // Update profile with fresh cloud state
+            const updatedUser = cloudProfile || state.user;
+
             // Merge local watchlist with cloud watchlist
-            const mergedWatchlist = Array.from(new Set([...state.watchlist, ...cloudWatchlist]));
+            const mergedWatchlist = Array.from(new Set([...cloudWatchlist, ...state.watchlist]));
 
             // Merge local history with cloud history
             const mergedHistory = { ...cloudHistory, ...state.history };
@@ -126,6 +174,7 @@ export const useStore = create<AppState>()(
             });
 
             return {
+              user: updatedUser,
               watchlist: mergedWatchlist,
               history: mergedHistory,
               downloads: mergedDownloads,

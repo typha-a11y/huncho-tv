@@ -20,9 +20,6 @@ import {
   Sliders, 
   LogOut, 
   ChevronRight, 
-  Copy, 
-  Check, 
-  Database, 
   ShieldCheck, 
   Camera, 
   Lock,
@@ -34,7 +31,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "../lib/store";
-import { SUPABASE_SQL_SCHEMA, isSupabaseConfigured } from "../lib/supabaseClient";
+import { isSupabaseConfigured } from "../lib/supabaseClient";
 
 interface ProfileViewProps {
   onNavigateTab?: (tab: string) => void;
@@ -44,6 +41,8 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
   const { 
     user, 
     setUser, 
+    updateUserProfile,
+    logout,
     openAuthModal, 
     watchlist, 
     history, 
@@ -53,23 +52,15 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
     syncCloudData
   } = useStore();
   
-  const [showSqlModal, setShowSqlModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
   const [showVipModal, setShowVipModal] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showAvatarSelect, setShowAvatarSelect] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2000);
-  };
-
-  const handleSignOut = () => {
-    setUser(null);
+  const handleSignOut = async () => {
+    await logout();
   };
 
   // Unauthenticated State View
@@ -97,62 +88,13 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
             >
               Sign In / Create Account
             </button>
-            <button
-              onClick={() => setShowSqlModal(true)}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Database className="w-4 h-4 text-indigo-600" />
-              <span>View Supabase SQL Schema</span>
-            </button>
           </div>
         </div>
-
-        {/* Database SQL Modal */}
-        {showSqlModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[85vh] flex flex-col">
-              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Database className="w-5 h-5 text-indigo-600" />
-                  <h3 className="font-extrabold text-slate-900 text-base">Supabase PostgreSQL Schema</h3>
-                </div>
-                <button
-                  onClick={() => setShowSqlModal(false)}
-                  className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="p-5 overflow-y-auto flex-1 font-mono text-[11px] bg-slate-900 text-slate-100 p-4 rounded-xl leading-relaxed whitespace-pre-wrap">
-                {SUPABASE_SQL_SCHEMA}
-              </div>
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button
-                  onClick={handleCopySql}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
-                >
-                  {copiedSql ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedSql ? "Copied to Clipboard!" : "Copy SQL Script"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
 
-  const defaultJaphetUser = {
-    id: "japhet-user-619",
-    full_name: "Japhet Mathias",
-    email: "japhetmathias619@gmail.com",
-    avatar_url: "https://api.dicebear.com/7.x/micah/svg?seed=Felix",
-    is_pro: true,
-    plan_name: "Huncho VIP (Monthly)",
-    plan_price: "TZS 12,000"
-  };
-
-  const currentUser = user || defaultJaphetUser;
+  const currentUser = user;
   const usernameHandle = `@${currentUser.full_name?.toLowerCase().replace(/\s+/g, "_") || currentUser.email.split("@")[0]}`;
 
   return (
@@ -165,7 +107,7 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
           {/* Avatar */}
           <div className="relative shrink-0 pt-0.5">
             <img
-              src={currentUser.avatar_url || `https://api.dicebear.com/7.x/micah/svg?seed=Felix`}
+              src={currentUser.avatar_url || `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(currentUser.email || currentUser.id)}`}
               alt={currentUser.full_name || "User Avatar"}
               className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-xs bg-slate-100 transition-all ${
                 currentUser.is_pro 
@@ -198,7 +140,7 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
                 >
                   <button 
                     onClick={() => {
-                      setUser({ ...currentUser, avatar_url: `https://api.dicebear.com/7.x/micah/svg?seed=Jocelyn` });
+                      updateUserProfile({ avatar_url: `https://api.dicebear.com/7.x/micah/svg?seed=Jocelyn` });
                       setShowAvatarSelect(false);
                     }}
                     className={`p-1.5 rounded-lg hover:bg-slate-50 transition-colors ${currentUser.avatar_url?.includes('Jocelyn') ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}`}
@@ -208,7 +150,7 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
                   </button>
                   <button 
                     onClick={() => {
-                      setUser({ ...currentUser, avatar_url: `https://api.dicebear.com/7.x/micah/svg?seed=Felix` });
+                      updateUserProfile({ avatar_url: `https://api.dicebear.com/7.x/micah/svg?seed=Felix` });
                       setShowAvatarSelect(false);
                     }}
                     className={`p-1.5 rounded-lg hover:bg-slate-50 transition-colors ${(!currentUser.avatar_url || currentUser.avatar_url.includes('Felix')) ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}`}
@@ -565,22 +507,6 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
           </div>
 
           <div 
-            onClick={() => setShowSqlModal(true)}
-            className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                <Database className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-900">PostgreSQL SQL Schema</p>
-                <p className="text-[11px] text-slate-500">Supabase DB tables & row level security</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
-          </div>
-
-          <div 
             onClick={() => setShowSettingsModal(true)}
             className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
           >
@@ -608,38 +534,6 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
           <span>Sign Out</span>
         </button>
       </div>
-
-      {/* Database SQL Modal */}
-      {showSqlModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[85vh] flex flex-col">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <Database className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-extrabold text-slate-900 text-base">Supabase SQL Schema & RLS Policies</h3>
-              </div>
-              <button
-                onClick={() => setShowSqlModal(false)}
-                className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto flex-1 font-mono text-[11px] bg-slate-900 text-slate-100 p-4 rounded-xl leading-relaxed whitespace-pre-wrap">
-              {SUPABASE_SQL_SCHEMA}
-            </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-              <button
-                onClick={handleCopySql}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
-              >
-                {copiedSql ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedSql ? "Copied to Clipboard!" : "Copy SQL Script"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Suspense fallback={null}>
         <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />

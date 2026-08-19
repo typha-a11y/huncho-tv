@@ -70,20 +70,13 @@ export function Recommendations() {
   if (watchlist.length === 0 || recommendedMovies.length === 0) return null;
 
   return (
-    <motion.div 
-      initial={{ scale: 0.97, y: 24, rotateX: 4 }}
-      whileInView={{ scale: 1, y: 0, rotateX: 0 }}
-      viewport={{ once: true, margin: "-30px", amount: 0.15 }}
-      transition={{ type: "spring", stiffness: 280, damping: 24 }}
-      style={{ transformPerspective: 1200 }}
-      className="pt-2"
-    >
+    <div className="pt-2">
       <div className="flex items-center justify-between gap-2 mb-4">
         <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">
           Because You Liked {genreName}
         </h2>
       </div>
       <CategoryCarousel title="" movies={recommendedMovies} />
-    </motion.div>
+    </div>
   );
 }

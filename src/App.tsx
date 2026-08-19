@@ -36,6 +36,7 @@ import { Movie, Genre } from "./types";
 import { cn } from "./lib/utils";
 import { useStore } from "./lib/store";
 import { supabase, isSupabaseConfigured } from "./lib/supabaseClient";
+import { fetchUserProfile } from "./lib/syncService";
 
 import { MovieDetailModal } from "./components/MovieDetailModal";
 import { VideoPlayerModal } from "./components/VideoPlayerModal";
@@ -72,37 +73,43 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const u = session.user;
-        setUser({
-          id: u.id,
-          email: u.email || "",
-          full_name: u.user_metadata?.full_name || u.email?.split("@")[0] || "User",
-          avatar_url: u.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.email || "")}`,
-          is_pro: true,
-          created_at: u.created_at,
-        });
-      }
-    });
+    let isMounted = true;
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.user) {
-        const u = session.user;
-        setUser({
-          id: u.id,
-          email: u.email || "",
-          full_name: u.user_metadata?.full_name || u.email?.split("@")[0] || "User",
-          avatar_url: u.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.email || "")}`,
-          is_pro: true,
-          created_at: u.created_at,
-        });
+    const restoreSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && isMounted) {
+          const profile = await fetchUserProfile(session.user.id, session.user);
+          if (profile && isMounted) {
+            setUser(profile);
+          }
+        }
+      } catch (err) {
+        console.warn("Session restore error:", err);
+      }
+    };
+
+    restoreSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user) {
+        try {
+          const profile = await fetchUserProfile(session.user.id, session.user);
+          if (profile && isMounted) {
+            setUser(profile);
+          }
+        } catch (err) {
+          console.warn("Auth change fetchUserProfile error:", err);
+        }
       } else if (event === "SIGNED_OUT") {
-        setUser(null);
+        if (isMounted) {
+          setUser(null);
+        }
       }
     });
 
     return () => {
+      isMounted = false;
       authListener?.subscription.unsubscribe();
     };
   }, [setUser]);

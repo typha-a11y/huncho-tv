@@ -2,36 +2,178 @@ import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import { WatchHistoryItem, UserDownloadItem, UserProfile } from "../types";
 
 /**
- * Sync user profile details to Supabase 'profiles' table
+ * Fetch and build the complete, authoritative UserProfile from Supabase
+ * combining public.profiles table and auth.users user_metadata
+ */
+export async function fetchUserProfile(userId: string, authUser?: any): Promise<UserProfile | null> {
+  if (!userId) return null;
+
+  let baseEmail = authUser?.email || "";
+  let baseFullName = authUser?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "User";
+  let baseAvatar = authUser?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(userId)}`;
+  let isPro = Boolean(authUser?.user_metadata?.is_pro);
+  let planType = authUser?.user_metadata?.plan_type as "daily" | "weekly" | "monthly" | "yearly" | undefined;
+  let planName = authUser?.user_metadata?.plan_name;
+  let planPrice = authUser?.user_metadata?.plan_price;
+  let planExpiresAt = authUser?.user_metadata?.plan_expires_at;
+  let createdAt = authUser?.created_at || new Date().toISOString();
+
+  if (isSupabaseConfigured) {
+    try {
+      // 1. Check public.profiles table
+      const { data: profileRow, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!error && profileRow) {
+        if (profileRow.email) baseEmail = profileRow.email;
+        if (profileRow.full_name) baseFullName = profileRow.full_name;
+        if (profileRow.avatar_url) baseAvatar = profileRow.avatar_url;
+        if (profileRow.is_pro !== undefined && profileRow.is_pro !== null) {
+          isPro = Boolean(profileRow.is_pro);
+        }
+        if (profileRow.plan_type) planType = profileRow.plan_type;
+        if (profileRow.plan_name) planName = profileRow.plan_name;
+        if (profileRow.plan_price) planPrice = profileRow.plan_price;
+        if (profileRow.plan_expires_at) planExpiresAt = profileRow.plan_expires_at;
+        if (profileRow.created_at) createdAt = profileRow.created_at;
+      } else if (!profileRow) {
+        // Create initial profile row if not existing
+        await supabase.from("profiles").upsert(
+          {
+            id: userId,
+            email: baseEmail,
+            full_name: baseFullName,
+            avatar_url: baseAvatar,
+            is_pro: isPro,
+          },
+          { onConflict: "id" }
+        );
+      }
+    } catch (err) {
+      console.warn("fetchUserProfile Supabase query error:", err);
+    }
+  }
+
+  // Check subscription expiry date if present
+  if (planExpiresAt) {
+    const expTime = new Date(planExpiresAt).getTime();
+    if (!isNaN(expTime) && expTime < Date.now()) {
+      isPro = false;
+    }
+  }
+
+  // If user is pro but missing plan details, assign default monthly plan metadata
+  if (isPro && !planName) {
+    planName = "Huncho VIP (Monthly)";
+    planPrice = "TZS 12,000";
+    planType = "monthly";
+    if (!planExpiresAt) {
+      planExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    }
+  }
+
+  return {
+    id: userId,
+    email: baseEmail,
+    full_name: baseFullName,
+    avatar_url: baseAvatar,
+    is_pro: isPro,
+    plan_type: planType,
+    plan_name: planName,
+    plan_price: planPrice,
+    plan_expires_at: planExpiresAt,
+    created_at: createdAt,
+  };
+}
+
+/**
+ * Sync user profile details to Supabase 'profiles' table and auth.users metadata
  */
 export async function syncUserProfile(user: UserProfile): Promise<UserProfile> {
-  if (!isSupabaseConfigured || !user.id) return user;
+  if (!user?.id) return user;
 
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert({
+  // 1. Update Supabase Auth user metadata for immediate cross-device sync
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          full_name: user.full_name,
+          avatar_url: user.avatar_url,
+          is_pro: user.is_pro,
+          plan_type: user.plan_type,
+          plan_name: user.plan_name,
+          plan_price: user.plan_price,
+          plan_expires_at: user.plan_expires_at,
+        },
+      });
+    } catch (authErr) {
+      console.warn("syncUserProfile auth metadata update notice:", authErr);
+    }
+
+    // 2. Upsert to public.profiles table (handling schema columns gracefully)
+    try {
+      const fullPayload: Record<string, any> = {
         id: user.id,
         email: user.email,
         full_name: user.full_name || null,
         avatar_url: user.avatar_url || null,
-        is_pro: user.is_pro ?? true,
-      }, { onConflict: "id" })
-      .select()
-      .single();
-
-    if (!error && data) {
-      return {
-        ...user,
-        full_name: data.full_name || user.full_name,
-        avatar_url: data.avatar_url || user.avatar_url,
-        is_pro: data.is_pro ?? user.is_pro,
+        is_pro: Boolean(user.is_pro),
+        plan_type: user.plan_type || null,
+        plan_name: user.plan_name || null,
+        plan_price: user.plan_price || null,
+        plan_expires_at: user.plan_expires_at || null,
       };
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert(fullPayload, { onConflict: "id" })
+        .select()
+        .single();
+
+      if (error) {
+        // Fallback for basic schema in case custom plan columns are not present
+        await supabase
+          .from("profiles")
+          .upsert({
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name || null,
+            avatar_url: user.avatar_url || null,
+            is_pro: Boolean(user.is_pro),
+          }, { onConflict: "id" });
+      } else if (data) {
+        return {
+          ...user,
+          full_name: data.full_name || user.full_name,
+          avatar_url: data.avatar_url || user.avatar_url,
+          is_pro: data.is_pro !== undefined ? Boolean(data.is_pro) : user.is_pro,
+          plan_type: data.plan_type || user.plan_type,
+          plan_name: data.plan_name || user.plan_name,
+          plan_price: data.plan_price || user.plan_price,
+          plan_expires_at: data.plan_expires_at || user.plan_expires_at,
+        };
+      }
+    } catch (err) {
+      console.warn("syncUserProfile database error:", err);
     }
-  } catch (err) {
-    console.warn("syncUserProfile error:", err);
   }
+
   return user;
+}
+
+/**
+ * Sign out user from Supabase and invalidate remote session
+ */
+export async function signOutUser(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  try {
+    await supabase.auth.signOut();
+  } catch (err) {
+    console.warn("signOutUser error:", err);
+  }
 }
 
 /**

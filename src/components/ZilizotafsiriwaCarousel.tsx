@@ -18,14 +18,7 @@ export function ZilizotafsiriwaCarousel({ onViewAll }: ZilizotafsiriwaCarouselPr
   };
 
   return (
-    <motion.section 
-      initial={{ scale: 0.97, y: 26, rotateX: 4 }}
-      whileInView={{ scale: 1, y: 0, rotateX: 0 }}
-      viewport={{ once: true, margin: "-30px", amount: 0.12 }}
-      transition={{ type: "spring", stiffness: 280, damping: 24 }}
-      style={{ transformPerspective: 1200 }}
-      className="pt-2"
-    >
+    <section className="pt-2">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-2 h-6 bg-gradient-to-b from-purple-600 to-indigo-600 rounded-full shrink-0" />
@@ -47,42 +40,15 @@ export function ZilizotafsiriwaCarousel({ onViewAll }: ZilizotafsiriwaCarouselPr
       </div>
 
       <div className="snap-x snap-mandatory overflow-x-auto hide-scrollbar flex gap-3.5 px-1 pb-4">
-        {ZILIZOTAFSIRIWA_CATALOG.map((movie, index) => (
+        {ZILIZOTAFSIRIWA_CATALOG.map((movie) => (
           <motion.div
             key={movie.id}
             role="button"
             tabIndex={0}
             aria-label={`Play ${movie.title} translated by ${movie.djName}`}
-            initial={{ 
-              scale: 0.82, 
-              y: 36, 
-              rotateX: 18, 
-              rotateY: index % 2 === 0 ? -3 : 3,
-              rotateZ: index % 2 === 0 ? -1 : 1
-            }}
-            whileInView={{ 
-              scale: 1, 
-              y: 0, 
-              rotateX: 0, 
-              rotateY: 0,
-              rotateZ: 0
-            }}
-            viewport={{ once: true, margin: "-10px" }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 300, 
-              damping: 22, 
-              mass: 0.8,
-              delay: Math.min(index * 0.04, 0.28) 
-            }}
-            whileHover={{ 
-              y: -8, 
-              scale: 1.035, 
-              rotateX: -3, 
-              rotateY: 2 
-            }}
-            whileTap={{ scale: 0.96, y: -2, rotateX: 4 }}
-            style={{ transformPerspective: 1000, transformOrigin: "center bottom" }}
+            whileHover={{ y: -4, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.2 }}
             onClick={() => handlePlayStream(movie)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -90,7 +56,7 @@ export function ZilizotafsiriwaCarousel({ onViewAll }: ZilizotafsiriwaCarouselPr
                 handlePlayStream(movie);
               }
             }}
-            className="snap-start shrink-0 w-[140px] xs:w-[160px] sm:w-[190px] cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/80 bg-white transition-shadow duration-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2"
+            className="snap-start shrink-0 w-[140px] xs:w-[160px] sm:w-[190px] cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/80 bg-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2"
           >
             <div className="aspect-[2/3] overflow-hidden relative bg-slate-100">
               <MoviePosterImage
@@ -122,6 +88,6 @@ export function ZilizotafsiriwaCarousel({ onViewAll }: ZilizotafsiriwaCarouselPr
           </motion.div>
         ))}
       </div>
-    </motion.section>
+    </section>
   );
 }

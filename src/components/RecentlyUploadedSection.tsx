@@ -82,13 +82,7 @@ export function RecentlyUploadedSection() {
   return (
     <div className="space-y-4 md:space-y-8">
       {recentMovies.length > 0 && (
-        <motion.div
-          initial={{ scale: 0.97, y: 24, rotateX: 4 }}
-          whileInView={{ scale: 1, y: 0, rotateX: 0 }}
-          viewport={{ once: true, margin: "-30px", amount: 0.15 }}
-          transition={{ type: "spring", stiffness: 280, damping: 24 }}
-          style={{ transformPerspective: 1200 }}
-        >
+        <div>
           <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
             <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               <AnimatedFlame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 shrink-0" />
@@ -96,17 +90,11 @@ export function RecentlyUploadedSection() {
             </h2>
           </div>
           <CategoryCarousel title="" movies={recentMovies} />
-        </motion.div>
+        </div>
       )}
 
       {recentSeries.length > 0 && (
-        <motion.div
-          initial={{ scale: 0.97, y: 24, rotateX: 4 }}
-          whileInView={{ scale: 1, y: 0, rotateX: 0 }}
-          viewport={{ once: true, margin: "-30px", amount: 0.15 }}
-          transition={{ type: "spring", stiffness: 280, damping: 24 }}
-          style={{ transformPerspective: 1200 }}
-        >
+        <div>
           <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
             <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               <AnimatedFlame className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 fill-rose-500 shrink-0" />
@@ -114,7 +102,7 @@ export function RecentlyUploadedSection() {
             </h2>
           </div>
           <CategoryCarousel title="" movies={recentSeries} />
-        </motion.div>
+        </div>
       )}
     </div>
   );

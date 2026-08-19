@@ -371,14 +371,10 @@ function MovieCarouselCard({
 }) {
   return (
     <motion.div
-      initial={{ scale: 0.84, y: 32, rotateX: 16, rotateY: -3 }}
-      whileInView={{ scale: 1, y: 0, rotateX: 0, rotateY: 0 }}
-      viewport={{ once: true, margin: "-10px" }}
-      transition={{ type: "spring", stiffness: 300, damping: 22, mass: 0.8 }}
-      whileHover={{ y: -7, scale: 1.03, rotateX: -3, rotateY: 2 }}
-      whileTap={{ scale: 0.96, y: -2, rotateX: 4 }}
-      style={{ transformPerspective: 1000, transformOrigin: "center bottom" }}
-      className="snap-start shrink-0 w-[150px] xs:w-[170px] sm:w-[200px] bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col h-full group"
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2 }}
+      className="snap-start shrink-0 w-[150px] xs:w-[170px] sm:w-[200px] bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full group"
     >
       <div className="relative aspect-[2/3] bg-slate-100 overflow-hidden">
         <MoviePosterImage
@@ -465,14 +461,10 @@ function MovieGridCard({
 }) {
   return (
     <motion.div
-      initial={{ scale: 0.84, y: 36, rotateX: 18, rotateY: -3 }}
-      whileInView={{ scale: 1, y: 0, rotateX: 0, rotateY: 0 }}
-      viewport={{ once: true, margin: "-10px" }}
-      transition={{ type: "spring", stiffness: 300, damping: 22, mass: 0.8 }}
-      whileHover={{ y: -6, scale: 1.025, rotateX: -2, rotateY: 1 }}
-      whileTap={{ scale: 0.96, y: -2, rotateX: 3 }}
-      style={{ transformPerspective: 1100, transformOrigin: "center bottom" }}
-      className="group bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col h-full"
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2 }}
+      className="group bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full"
     >
       <div className="relative aspect-[2/3] bg-slate-100 overflow-hidden">
         <MoviePosterImage

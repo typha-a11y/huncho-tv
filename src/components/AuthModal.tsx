@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { fetchUserProfile } from "../lib/syncService";
 import { useStore } from "../lib/store";
 import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import logoImg from "../assets/logo.png";
@@ -75,14 +76,19 @@ export function AuthModal() {
           if (error) throw error;
 
           if (data.user) {
-            setUser({
-              id: data.user.id,
-              email: data.user.email || email,
-              full_name: data.user.user_metadata?.full_name || email.split("@")[0],
-              avatar_url: data.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-              is_pro: true,
-              created_at: data.user.created_at,
-            });
+            const profile = await fetchUserProfile(data.user.id, data.user);
+            if (profile) {
+              setUser(profile);
+            } else {
+              setUser({
+                id: data.user.id,
+                email: data.user.email || email,
+                full_name: data.user.user_metadata?.full_name || email.split("@")[0],
+                avatar_url: data.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
+                is_pro: false,
+                created_at: data.user.created_at,
+              });
+            }
             setSuccessMsg("Signed in successfully!");
             setTimeout(() => {
               closeAuthModal();
