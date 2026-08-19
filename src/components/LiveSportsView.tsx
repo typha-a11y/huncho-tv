@@ -13,10 +13,10 @@ import {
   Activity,
   ExternalLink,
   ChevronRight,
-  Flame,
   Zap,
   Info
 } from "lucide-react";
+import { AnimatedFlame } from "./AnimatedFlame";
 import { useStore } from "../lib/store";
 
 interface LiveSportsViewProps {
@@ -529,7 +529,7 @@ export function LiveSportsView({ onExplore }: LiveSportsViewProps) {
         <div className="flex items-center justify-between gap-3 px-1">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-rose-100 text-rose-600 rounded-xl">
-              <Flame className="w-5 h-5 fill-rose-600" />
+              <AnimatedFlame className="w-5 h-5 text-rose-600 fill-rose-600" />
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">

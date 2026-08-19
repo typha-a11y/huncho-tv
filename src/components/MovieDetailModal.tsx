@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, Play, Plus, Check, Star, Flame, Youtube, X, Share2, Clock, Calendar, UserCheck, Film, Download } from "lucide-react";
+import { ChevronLeft, Play, Plus, Check, Star, Youtube, X, Share2, Clock, Calendar, UserCheck, Film, Download, RotateCcw, Crown } from "lucide-react";
+import { AnimatedFlame } from "./AnimatedFlame";
 import { useStore } from "../lib/store";
-import { getMovieDetails, getRatings, getImageUrl, getPrimaryGenre } from "../lib/api";
+import { fetchMediaDetails, getRatings, getImageUrl, getPrimaryGenre } from "../lib/api";
 import { MovieDetails, Ratings } from "../types";
 import { motion, AnimatePresence } from "motion/react";
+import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import { formatTime } from "../lib/utils";
 import { getSafeImageUrl, cleanTitleForTMDB } from "../lib/imageUtils";
 import { MoviePosterImage } from "./MoviePosterImage";
@@ -11,6 +13,7 @@ import { MoviePosterImage } from "./MoviePosterImage";
 export function MovieDetailModal() {
   const { 
     selectedMovieId, 
+    selectedMediaType,
     setSelectedMovieId, 
     setVideoPlayerOpen, 
     watchlist, 
@@ -20,6 +23,7 @@ export function MovieDetailModal() {
     toggleAutoPlayTrailer,
     openDownloadModal,
     checkAuthGuard,
+    user,
   } = useStore();
 
   const [movie, setMovie] = useState<MovieDetails | null>(null);
@@ -27,6 +31,89 @@ export function MovieDetailModal() {
   const [loading, setLoading] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeType, setActiveType] = useState<"movie" | "tv">(selectedMediaType || "movie");
+
+  const { modalRef, modalProps, getTransitionDuration } = useModalAccessibility({
+    isOpen: Boolean(selectedMovieId),
+    onClose: () => setSelectedMovieId(null),
+  });
+
+  const loadDetails = (id: number | string, type: "movie" | "tv" | string | null) => {
+    setShowTrailer(false);
+    setMovie(null);
+    setRatings({ imdb: null, rottenTomatoes: null });
+    setLoading(true);
+
+    const initialType = (type === "tv" || type === "movie") ? type : "movie";
+    setActiveType(initialType);
+
+    fetchMediaDetails(id, initialType).then(async (data) => {
+      let finalData = data;
+      
+      // Client-side live fallback to TMDB for missing or broken metadata from Supabase
+      if (data && (typeof id === 'string')) {
+        const isMissingPoster = !data.poster_path || data.poster_path.includes("thenkiri.com");
+        const isMissingBackdrop = !data.backdrop_path || data.backdrop_path.includes("thenkiri.com");
+        
+        if (isMissingPoster || isMissingBackdrop || !data.overview || data.overview.includes("Custom added")) {
+          try {
+            const cleanTitle = cleanTitleForTMDB(data.title || data.original_title);
+              
+            if (cleanTitle) {
+              const tmdbKey = import.meta.env.VITE_TMDB_API_KEY;
+              if (tmdbKey) {
+                const searchRes = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${tmdbKey}&query=${encodeURIComponent(cleanTitle)}`);
+                const searchData = await searchRes.json();
+                
+                if (searchData.results && searchData.results.length > 0) {
+                  const bestMatch = searchData.results.find((r: any) => r.media_type === "movie" || r.media_type === "tv") || searchData.results[0];
+                  
+                  if (bestMatch && bestMatch.id) {
+                    const resolvedType = bestMatch.media_type || 'movie';
+                    const detailsRes = await fetch(`https://api.themoviedb.org/3/${resolvedType}/${bestMatch.id}?api_key=${tmdbKey}&append_to_response=videos,external_ids`);
+                    const detailsData = await detailsRes.json();
+                    
+                    finalData = {
+                      ...data,
+                      poster_path: getSafeImageUrl(detailsData.poster_path || data.poster_path),
+                      backdrop_path: getSafeImageUrl(detailsData.backdrop_path || data.backdrop_path),
+                      overview: detailsData.overview || data.overview,
+                      videos: detailsData.videos,
+                      external_ids: detailsData.external_ids || data.external_ids,
+                      media_type: resolvedType,
+                    };
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("TMDB Live Fallback Error:", err);
+          }
+        }
+      }
+      
+      setMovie(finalData);
+      if (finalData?.external_ids?.imdb_id) {
+        getRatings(finalData.external_ids.imdb_id).then(setRatings);
+      }
+      setLoading(false);
+
+      if (autoPlayTrailer && finalData) {
+        const trailer = finalData?.videos?.results?.find(
+          (v) => v.site === "YouTube" && v.type === "Trailer"
+        ) || finalData?.videos?.results?.find((v) => v.site === "YouTube");
+        if (trailer) {
+          setShowTrailer(true);
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (selectedMovieId) {
+      loadDetails(selectedMovieId, selectedMediaType);
+    }
+  }, [selectedMovieId, selectedMediaType, autoPlayTrailer]);
 
   const handleDownload = () => {
     if (!movie) return;
@@ -49,83 +136,15 @@ export function MovieDetailModal() {
     if (!movie) return;
     if (!isWatchlisted) {
       if (!checkAuthGuard("Add to Watchlist")) return;
-      addToWatchlist(movie.id);
+      addToWatchlist(movie.id, {
+        title: movie.title || movie.original_title,
+        posterPath: movie.poster_path,
+        rating: Number(ratings.imdb || 0)
+      });
     } else {
       removeFromWatchlist(movie.id);
     }
   };
-
-  useEffect(() => {
-    if (selectedMovieId) {
-      setShowTrailer(false);
-      setMovie(null);
-      setRatings({ imdb: null, rottenTomatoes: null });
-      setLoading(true);
-      getMovieDetails(selectedMovieId).then(async (data) => {
-        let finalData = data;
-        
-        // Client-side live fallback to TMDB for missing or broken metadata from Supabase
-        if (data && (typeof selectedMovieId === 'string')) {
-          const isMissingPoster = !data.poster_path || data.poster_path.includes("thenkiri.com");
-          const isMissingBackdrop = !data.backdrop_path || data.backdrop_path.includes("thenkiri.com");
-          
-          if (isMissingPoster || isMissingBackdrop || !data.overview || data.overview.includes("Custom added movie")) {
-            try {
-              // Clean title by stripping out episode/season tags and quality brackets
-              const cleanTitle = cleanTitleForTMDB(data.title || data.original_title);
-                
-              if (cleanTitle) {
-                // Search TMDB for the cleaned title
-                const tmdbKey = import.meta.env.VITE_TMDB_API_KEY;
-                if (tmdbKey) {
-                  const searchRes = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${tmdbKey}&query=${encodeURIComponent(cleanTitle)}`);
-                  const searchData = await searchRes.json();
-                  
-                  if (searchData.results && searchData.results.length > 0) {
-                    const bestMatch = searchData.results.find((r: any) => r.media_type === "movie" || r.media_type === "tv") || searchData.results[0];
-                    
-                    if (bestMatch && bestMatch.id) {
-                      // Fetch full details to get videos
-                      const type = bestMatch.media_type || 'movie';
-                      const detailsRes = await fetch(`https://api.themoviedb.org/3/${type}/${bestMatch.id}?api_key=${tmdbKey}&append_to_response=videos,external_ids`);
-                      const detailsData = await detailsRes.json();
-                      
-                      finalData = {
-                        ...data,
-                        poster_path: getSafeImageUrl(detailsData.poster_path || data.poster_path),
-                        backdrop_path: getSafeImageUrl(detailsData.backdrop_path || data.backdrop_path),
-                        overview: detailsData.overview || data.overview,
-                        videos: detailsData.videos,
-                        external_ids: detailsData.external_ids || data.external_ids,
-                      };
-                    }
-                  }
-                }
-              }
-            } catch (err) {
-              console.warn("TMDB Live Fallback Error:", err);
-            }
-          }
-        }
-        
-        setMovie(finalData);
-        if (finalData?.external_ids?.imdb_id) {
-          getRatings(finalData.external_ids.imdb_id).then(setRatings);
-        }
-        setLoading(false);
-
-        // Auto-play trailer if enabled and trailer exists
-        if (autoPlayTrailer && finalData) {
-          const trailer = finalData?.videos?.results?.find(
-            (v) => v.site === "YouTube" && v.type === "Trailer"
-          ) || finalData?.videos?.results?.find((v) => v.site === "YouTube");
-          if (trailer) {
-            setShowTrailer(true);
-          }
-        }
-      });
-    }
-  }, [selectedMovieId, autoPlayTrailer]);
 
   const handleShare = async () => {
     if (!movie) return;
@@ -167,30 +186,34 @@ export function MovieDetailModal() {
     <AnimatePresence>
       {selectedMovieId && (
         <motion.div 
+          ref={modalRef}
+          {...modalProps}
+          aria-labelledby="movie-detail-title"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="fixed inset-0 z-50 bg-[#F8F9FB] overflow-y-auto overflow-x-hidden"
+          transition={{ duration: getTransitionDuration(0.2), ease: "easeOut" }}
+          className="fixed inset-0 z-50 bg-[#F8F9FB] overflow-y-auto overflow-x-hidden focus:outline-none"
         >
           {/* Sticky Responsive Header Bar */}
           <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-3 xs:px-4 py-2.5 flex items-center justify-between shadow-xs">
             <button 
               onClick={() => setSelectedMovieId(null)}
-              className="flex items-center gap-1.5 p-1.5 xs:px-2.5 xs:py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer text-xs font-semibold"
+              aria-label="Back to movie list"
+              className="flex items-center gap-1.5 p-1.5 xs:px-2.5 xs:py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
             >
               <ChevronLeft className="w-5 h-5 text-slate-700" />
               <span className="hidden xs:inline">Back</span>
             </button>
 
-            <h1 className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[180px] xs:max-w-[240px] sm:max-w-[360px] text-center">
+            <h1 id="movie-detail-title" className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[180px] xs:max-w-[240px] sm:max-w-[360px] text-center">
               {movie ? (movie.title || movie.original_title) : "Movie Details"}
             </h1>
 
             <div className="flex items-center gap-1.5">
               <button
                 onClick={toggleAutoPlayTrailer}
-                className={`px-2 py-1 xs:px-2.5 xs:py-1 rounded-full text-[10px] xs:text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+                className={`px-2 py-1 xs:px-2.5 xs:py-1 rounded-full text-[10px] xs:text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
                   autoPlayTrailer
                     ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80 shadow-xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200/60'
@@ -204,7 +227,8 @@ export function MovieDetailModal() {
 
               <button
                 onClick={handleShare}
-                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                aria-label="Share movie link"
+                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
                 title="Share Movie"
               >
                 <Share2 className="w-4 h-4" />
@@ -213,9 +237,21 @@ export function MovieDetailModal() {
           </header>
 
           {loading ? (
-            <div className="min-h-[70vh] w-full flex flex-col items-center justify-center p-8 gap-3">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-              <p className="text-xs text-slate-500 font-medium">Loading movie details...</p>
+            <div className="max-w-4xl mx-auto bg-white min-h-[calc(100vh-53px)] shadow-xs border-x border-slate-200/60 p-4 xs:p-6 animate-pulse">
+              <div className="w-full aspect-[21/9] bg-slate-200 rounded-2xl mb-6" />
+              <div className="flex gap-4 mb-6">
+                <div className="w-28 h-40 bg-slate-200 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <div className="h-6 bg-slate-200 rounded-md w-3/4" />
+                  <div className="h-4 bg-slate-200 rounded-md w-1/2" />
+                  <div className="h-10 bg-slate-200 rounded-xl w-full mt-4" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 bg-slate-200 rounded w-full" />
+                <div className="h-4 bg-slate-200 rounded w-5/6" />
+                <div className="h-4 bg-slate-200 rounded w-4/6" />
+              </div>
             </div>
           ) : movie ? (
             <div className="pb-16 max-w-4xl mx-auto bg-white min-h-[calc(100vh-53px)] shadow-xs border-x border-slate-200/60">
@@ -292,8 +328,8 @@ export function MovieDetailModal() {
                     </span>
                   )}
                   {ratings.rottenTomatoes && (
-                    <span className="bg-rose-50 text-rose-800 border border-rose-200/80 flex items-center gap-1 text-[11px] xs:text-xs font-bold px-2.5 py-1 rounded-lg">
-                      <Flame className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> {ratings.rottenTomatoes}
+                    <span className="bg-rose-50 text-rose-800 border border-rose-200/80 flex items-center gap-1.5 text-[11px] xs:text-xs font-bold px-2.5 py-1 rounded-lg">
+                      <AnimatedFlame className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> {ratings.rottenTomatoes}
                     </span>
                   )}
                   {movie.genres?.map((g, idx) => (
@@ -306,13 +342,30 @@ export function MovieDetailModal() {
 
               {/* Action Buttons Section */}
               <div className="px-4 xs:px-6 mb-8 space-y-2.5">
+                {/* PRO VIP Badge indicator */}
+                {user?.is_pro && (
+                  <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-amber-500/15 via-yellow-500/20 to-amber-500/15 border border-amber-300/80 rounded-xl text-xs font-bold text-amber-900 shadow-2xs">
+                    <div className="flex items-center gap-1.5">
+                      <Crown className="w-4 h-4 text-amber-600 fill-amber-400" />
+                      <span>PRO VIP: 4K Ultra HD & Fast CDN Unlocked</span>
+                    </div>
+                    <span className="text-[10px] bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-black px-2 py-0.5 rounded-md shadow-2xs">
+                      4K VIP
+                    </span>
+                  </div>
+                )}
+
                 {/* Full-width Main Play Stream Button */}
                 <button 
                   onClick={handlePlayStream}
-                  className="w-full h-12 text-sm font-bold rounded-xl flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 active:scale-[0.98] transition-all cursor-pointer"
+                  className={`w-full h-12 text-sm font-bold rounded-xl flex items-center justify-center gap-2 text-white shadow-md active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    user?.is_pro
+                      ? "bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-600 shadow-indigo-600/30 border border-amber-400/50 focus:ring-amber-400"
+                      : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20 focus:ring-indigo-600"
+                  }`}
                 >
                   <Play className="w-5 h-5 fill-current" />
-                  <span>Play Stream</span>
+                  <span>Play Stream {user?.is_pro ? "(4K VIP)" : ""}</span>
                 </button>
 
                 {/* Responsive 3-Column Secondary Buttons */}
@@ -320,7 +373,7 @@ export function MovieDetailModal() {
                   {trailerVideo ? (
                     <button 
                       onClick={() => setShowTrailer(true)}
-                      className="h-10 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 transition-colors cursor-pointer"
+                      className="h-10 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
                     >
                       <Youtube className="w-4 h-4 text-rose-600" />
                       <span>Trailer</span>
@@ -333,7 +386,8 @@ export function MovieDetailModal() {
 
                   <button 
                     onClick={handleToggleWatchlist}
-                    className={`h-10 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 border transition-colors cursor-pointer ${
+                    aria-label={isWatchlisted ? "Remove from watchlist" : "Add to watchlist"}
+                    className={`h-10 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
                       isWatchlisted 
                         ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200/80'
@@ -345,7 +399,8 @@ export function MovieDetailModal() {
 
                   <button 
                     onClick={handleShare}
-                    className={`h-10 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                    aria-label="Share movie link"
+                    className={`h-10 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
                       copied 
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200/80'
@@ -359,7 +414,8 @@ export function MovieDetailModal() {
                 {/* Download Button */}
                 <button 
                   onClick={handleDownload}
-                  className="w-full h-11 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 border border-indigo-200/80 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-900 transition-all cursor-pointer active:scale-[0.98] shadow-xs"
+                  aria-label="Download movie"
+                  className="w-full h-11 text-xs xs:text-sm font-semibold rounded-xl flex items-center justify-center gap-2 border border-indigo-200/80 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-900 transition-all cursor-pointer active:scale-[0.98] shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
                 >
                   <Download className="w-4 h-4 text-indigo-600" />
                   <span>Download Movie</span>
@@ -444,7 +500,35 @@ export function MovieDetailModal() {
               )}
             </div>
           ) : (
-            <div className="p-10 text-center text-slate-500 font-medium">Failed to load movie details.</div>
+            <div className="min-h-[60vh] w-full flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-3 border border-rose-100 shadow-xs">
+                <Film className="w-7 h-7" />
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">Failed to Load Details</h3>
+              <p className="text-xs text-slate-500 max-w-sm mb-5 leading-relaxed">
+                We couldn't retrieve metadata for this title under its current media category. You can retry requesting it as a {activeType === "tv" ? "Movie" : "TV Show"}.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
+                <button
+                  onClick={() => {
+                    const nextType = activeType === "tv" ? "movie" : "tv";
+                    if (selectedMovieId) {
+                      loadDetails(selectedMovieId, nextType);
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Try Re-fetching as {activeType === "tv" ? "Movie" : "TV Show"}</span>
+                </button>
+                <button
+                  onClick={() => setSelectedMovieId(null)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           )}
         </motion.div>
       )}

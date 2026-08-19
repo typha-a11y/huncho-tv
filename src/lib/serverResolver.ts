@@ -1,6 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { supabase } from "./supabaseClient";
 
 export interface ResolverSource {
   id: string;
@@ -32,23 +32,6 @@ const BROWSER_HEADERS = {
   "Accept-Language": "en-US,en;q=0.5",
   "Referer": "https://www.google.com/",
 };
-
-// Initialize Supabase client if environment credentials exist
-let SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://huncho-tv.supabase.co";
-if (SUPABASE_URL && !SUPABASE_URL.startsWith("http://") && !SUPABASE_URL.startsWith("https://")) {
-  SUPABASE_URL = "https://" + SUPABASE_URL + ".supabase.co";
-}
-const SUPABASE_KEY =
-  process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-
-let supabase: SupabaseClient | null = null;
-if (SUPABASE_URL && SUPABASE_KEY) {
-  try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  } catch (err) {
-    console.log("Supabase client init fallback:", err);
-  }
-}
 
 // In-Memory Database Cache for zero-latency hits
 const IN_MEMORY_DOWNLOADS: Record<string, ResolverSource[]> = {

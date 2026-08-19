@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import logoImg from "../assets/logo.png";
+
 import { PlansModal } from "./PlansModal";
 import { SettingsModal } from "./SettingsModal";
+import { VipDetailsModal } from "./VipDetailsModal";
 import { 
   User as UserIcon, 
   Crown, 
@@ -25,7 +27,10 @@ import {
   Camera, 
   Lock,
   Sparkles,
-  Zap
+  Zap,
+  RefreshCw,
+  Cloud,
+  CheckCircle2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "../lib/store";
@@ -36,10 +41,21 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ onNavigateTab }: ProfileViewProps) {
-  const { user, setUser, openAuthModal, watchlist, history, downloads } = useStore();
+  const { 
+    user, 
+    setUser, 
+    openAuthModal, 
+    watchlist, 
+    history, 
+    downloads,
+    isSyncing,
+    lastSyncedAt,
+    syncCloudData
+  } = useStore();
   
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
+  const [showVipModal, setShowVipModal] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showAvatarSelect, setShowAvatarSelect] = useState(false);
@@ -142,18 +158,31 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
   return (
     <div className="w-full max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-4 text-slate-900">
       {/* 1. User Profile Section - Wide Card with Rounded Corners */}
-      <div className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
+      <div className={`w-full bg-white rounded-2xl sm:rounded-3xl border shadow-xs p-5 sm:p-6 transition-all ${
+        currentUser.is_pro ? "border-amber-300/80 ring-1 ring-amber-200/50 shadow-sm" : "border-slate-200/80"
+      }`}>
         <div className="flex items-start gap-4 sm:gap-5">
           {/* Avatar */}
           <div className="relative shrink-0 pt-0.5">
             <img
               src={currentUser.avatar_url || `https://api.dicebear.com/7.x/micah/svg?seed=Felix`}
               alt={currentUser.full_name || "User Avatar"}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-indigo-100 shadow-xs bg-slate-100"
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-xs bg-slate-100 transition-all ${
+                currentUser.is_pro 
+                  ? "border-2 border-amber-400 ring-4 ring-amber-300/30 shadow-md shadow-amber-400/20" 
+                  : "border-2 border-indigo-100"
+              }`}
             />
+            {currentUser.is_pro && (
+              <span className="absolute -top-1.5 -left-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full p-1 shadow-xs border border-white">
+                <Crown className="w-3 h-3 fill-current text-white" />
+              </span>
+            )}
             <button 
               onClick={() => setShowAvatarSelect(!showAvatarSelect)}
-              className="absolute bottom-0 right-0 p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-xs transition-transform hover:scale-105 cursor-pointer"
+              className={`absolute bottom-0 right-0 p-1.5 text-white rounded-full shadow-xs transition-transform hover:scale-105 cursor-pointer ${
+                currentUser.is_pro ? "bg-amber-600 hover:bg-amber-700" : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
               title="Edit avatar"
             >
               <Camera className="w-3 h-3" />
@@ -199,14 +228,14 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
                 {currentUser.full_name || "Japhet Mathias"}
               </h1>
               {currentUser.is_pro && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs">
-                  <Crown className="w-3 h-3" />
-                  PRO MEMBER
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 shadow-xs border border-amber-300">
+                  <Crown className="w-3 h-3 fill-slate-950" />
+                  VIP PRO MEMBER
                 </span>
               )}
             </div>
 
-            <p className="text-xs font-semibold text-indigo-600 truncate">{usernameHandle}</p>
+            <p className={`text-xs font-semibold truncate ${currentUser.is_pro ? "text-amber-700" : "text-indigo-600"}`}>{usernameHandle}</p>
             <p className="text-xs text-slate-500 font-medium truncate">{currentUser.email}</p>
 
             {/* Saved and Offline buttons */}
@@ -228,34 +257,131 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 2. PRO / VIP Subscription Banner - Wide Card with Rounded Corners & Blue Gradient */}
-      <div className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-blue-500/20">
-        <div className="space-y-1 text-left">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-[11px] font-extrabold backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{currentUser?.is_pro ? (currentUser.plan_name ? `Active: ${currentUser.plan_name}` : "Active: Kifurushi cha Mwaka") : "Become a PRO"}</span>
+        {/* Cloud Sync Status Indicator */}
+        <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-xl ${isSyncing ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
+              {isSyncing ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+            </div>
+            <div>
+              <p className="font-bold text-slate-900">
+                {isSyncing ? "Syncing with Supabase Cloud..." : "Cross-Device Sync Active"}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {lastSyncedAt 
+                  ? `Last synced: ${new Date(lastSyncedAt).toLocaleTimeString()}` 
+                  : "Watchlist, Continue Watching & Downloads synchronized automatically"}
+              </p>
+            </div>
           </div>
-          <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-white pt-1">
-            {currentUser?.is_pro ? `VIP Plan (${currentUser.plan_price || "TZS 12,000"})` : "Unlimited 4K Streaming & Fast Downloads"}
-          </h3>
-          <p className="text-xs text-blue-100 font-medium max-w-lg">
-            {currentUser?.is_pro 
-              ? `Unrestricted access to all 4K streams, DJ translated movies & fast downloads.` 
-              : "Ad-free cinema experience, instant 60fps video playback, and cloud device sync."}
-          </p>
-        </div>
 
-        <button 
-          onClick={() => setShowPlansModal(true)}
-          className="px-5 py-2.5 bg-white hover:bg-blue-50 text-indigo-600 font-extrabold text-xs rounded-xl shadow-xs transition-all shrink-0 cursor-pointer active:scale-95 self-start sm:self-auto"
-        >
-          {currentUser?.is_pro ? "Manage Plan" : "Choose Plan (TZS)"}
-        </button>
+          <button
+            onClick={() => syncCloudData()}
+            disabled={isSyncing}
+            className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl border border-indigo-200/60 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs self-start sm:self-auto"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+            <span>Sync Cloud Data</span>
+          </button>
+        </div>
       </div>
 
-      <PlansModal isOpen={showPlansModal} onClose={() => setShowPlansModal(false)} />
+      {/* 2. PRO / VIP Subscription Banner - Clickable Card to View Details, Expiry, Upgrade & Cancel */}
+      {currentUser?.is_pro ? (
+        <div 
+          onClick={() => setShowVipModal(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setShowVipModal(true);
+            }
+          }}
+          aria-label="Manage VIP Membership: View details, expiry, upgrade or cancel"
+          className="w-full bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-500 text-slate-950 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-300 relative overflow-hidden cursor-pointer group transition-all hover:scale-[1.008] active:scale-[0.995] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+        >
+          {/* Subtle gold shine effect */}
+          <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/20 rounded-full blur-3xl pointer-events-none group-hover:bg-white/30 transition-all" />
+          <div className="absolute top-0 right-0 p-4 opacity-15 group-hover:opacity-25 transition-opacity pointer-events-none">
+            <Crown className="w-28 h-28 text-white fill-white" />
+          </div>
+
+          <div className="space-y-1.5 text-left relative z-10">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950 text-amber-300 text-[11px] font-black shadow-xs">
+              <Crown className="w-3.5 h-3.5 fill-amber-300" />
+              <span>{currentUser.plan_name ? `Active: ${currentUser.plan_name}` : "Active: Huncho VIP Member"}</span>
+            </div>
+            <h3 className="text-base sm:text-xl font-black tracking-tight text-slate-950 pt-1 flex items-center gap-2">
+              <span>VIP Membership Active • {currentUser.plan_price || "TZS 12,000"}</span>
+            </h3>
+            <p className="text-xs text-slate-900 font-semibold max-w-lg">
+              Enjoy unlimited 4K ultra-smooth streaming, lightning-fast cloud downloads, ad-free player & priority Kiswahili dub releases.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1.5 text-[11px] font-extrabold text-slate-950">
+              <span className="flex items-center gap-1 bg-white/50 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-amber-400/40 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-800" /> 4K Ultra HD Streaming
+              </span>
+              <span className="flex items-center gap-1 bg-white/50 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-amber-400/40 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-800" /> Uncapped Cloud Downloads
+              </span>
+              <span className="flex items-center gap-1 bg-white/50 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-amber-400/40 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-800" /> Ad-Free VIP Pass
+              </span>
+            </div>
+          </div>
+
+          <button 
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowVipModal(true);
+            }}
+            className="px-5 py-2.5 bg-slate-950 hover:bg-slate-900 group-hover:bg-slate-900 text-amber-300 font-extrabold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer active:scale-95 self-start sm:self-auto relative z-10 flex items-center gap-1.5 border border-amber-400/30 group-hover:border-amber-400"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Manage VIP Plan</span>
+          </button>
+        </div>
+      ) : (
+        <div className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-blue-500/20">
+          <div className="space-y-1 text-left">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-[11px] font-extrabold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Become a PRO</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-white pt-1">
+              Unlimited 4K Streaming & Fast Downloads
+            </h3>
+            <p className="text-xs text-blue-100 font-medium max-w-lg">
+              Ad-free cinema experience, instant 60fps video playback, and cloud device sync.
+            </p>
+          </div>
+
+          <button 
+            onClick={() => setShowPlansModal(true)}
+            className="px-5 py-2.5 bg-white hover:bg-blue-50 text-indigo-600 font-extrabold text-xs rounded-xl shadow-xs transition-all shrink-0 cursor-pointer active:scale-95 self-start sm:self-auto"
+          >
+            Choose Plan (TZS)
+          </button>
+        </div>
+      )}
+
+      {/* Modals */}
+      <VipDetailsModal 
+        isOpen={showVipModal} 
+        onClose={() => setShowVipModal(false)} 
+        onOpenUpgradePlans={() => setShowPlansModal(true)}
+      />
+
+      <Suspense fallback={null}>
+        <PlansModal isOpen={showPlansModal} onClose={() => setShowPlansModal(false)} />
+      </Suspense>
 
       {/* 3. Settings & Preferences Section - Wide Rounded Cards */}
 
@@ -515,7 +641,9 @@ export function ProfileView({ onNavigateTab }: ProfileViewProps) {
         </div>
       )}
 
-      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+      <Suspense fallback={null}>
+        <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+      </Suspense>
 
       {/* Feedback & Support Modal */}
       {showFeedbackModal && (

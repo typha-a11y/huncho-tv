@@ -18,15 +18,17 @@ import {
   Bell,
   Clock,
   Check,
-  Zap
+  Zap,
+  Crown
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "../lib/store";
+import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import { resolveDownloadLinks, recordNotificationRequest, unrestrictDebridLink, SourceProgress } from "../lib/api";
 import { DownloadResolverResult, DownloadSource } from "../types";
 
 export function DownloadModal() {
-  const { isDownloadModalOpen, downloadTarget, closeDownloadModal, addDownload } = useStore();
+  const { isDownloadModalOpen, downloadTarget, closeDownloadModal, addDownload, user } = useStore();
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<DownloadResolverResult | null>(null);
@@ -90,6 +92,11 @@ export function DownloadModal() {
       setLoading(false);
     }
   };
+
+  const { modalRef, modalProps, getTransitionDuration } = useModalAccessibility({
+    isOpen: isDownloadModalOpen,
+    onClose: closeDownloadModal,
+  });
 
   useEffect(() => {
     if (isDownloadModalOpen && downloadTarget) {
@@ -199,11 +206,14 @@ export function DownloadModal() {
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
         <motion.div
+          ref={modalRef}
+          {...modalProps}
+          aria-labelledby="download-modal-title"
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto"
+          transition={{ duration: getTransitionDuration(0.2), ease: "easeOut" }}
+          className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto focus:outline-none"
         >
           {/* Top Modal Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -212,7 +222,7 @@ export function DownloadModal() {
                 <Download className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-base font-bold text-slate-900 truncate leading-tight">
+                <h3 id="download-modal-title" className="text-base font-bold text-slate-900 truncate leading-tight">
                   {downloadTarget.title}
                 </h3>
                 <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mt-0.5">
@@ -229,14 +239,33 @@ export function DownloadModal() {
 
             <button
               onClick={closeDownloadModal}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+              aria-label="Close download modal"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
               title="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-5 space-y-5">
+          <div className="p-5 space-y-4">
+            {/* PRO VIP Status Banner */}
+            {user?.is_pro && (
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-gradient-to-r from-amber-500/15 via-yellow-500/20 to-amber-500/15 border border-amber-300/80 rounded-xl text-xs font-bold text-amber-950 shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-amber-500 text-white shadow-2xs">
+                    <Crown className="w-3.5 h-3.5 fill-current" />
+                  </div>
+                  <div>
+                    <span className="font-black text-amber-900">PRO VIP Cloud Engine</span>
+                    <span className="hidden xs:inline text-[11px] text-amber-700 font-medium ml-1.5">• 4K Uncapped Speeds & Priority Resolving</span>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-amber-500 text-white font-extrabold px-2 py-0.5 rounded-md shadow-2xs">
+                  PRIORITY
+                </span>
+              </div>
+            )}
+
             {/* Step Progress Bar Header */}
             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-700">

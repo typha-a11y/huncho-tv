@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Flame } from "lucide-react";
+import { AnimatedFlame } from "./AnimatedFlame";
+import { motion } from "motion/react";
 import { supabase } from "../lib/supabaseClient";
 import { Movie } from "../types";
 import { CategoryCarousel } from "./BentoGrid";
@@ -50,10 +51,10 @@ export function RecentlyUploadedSection() {
           } as any);
 
           if (moviesRes.data) {
-            setRecentMovies(moviesRes.data.map(mapMovie));
+            setRecentMovies(moviesRes.data.map((m) => mapMovie({ ...m, media_type: "movie" })));
           }
           if (seriesRes.data) {
-            setRecentSeries(seriesRes.data.map(mapMovie));
+            setRecentSeries(seriesRes.data.map((m) => mapMovie({ ...m, media_type: "tv" })));
           }
         }
       } catch (err) {
@@ -81,27 +82,39 @@ export function RecentlyUploadedSection() {
   return (
     <div className="space-y-4 md:space-y-8">
       {recentMovies.length > 0 && (
-        <div>
+        <motion.div
+          initial={{ scale: 0.97, y: 24, rotateX: 4 }}
+          whileInView={{ scale: 1, y: 0, rotateX: 0 }}
+          viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+          transition={{ type: "spring", stiffness: 280, damping: 24 }}
+          style={{ transformPerspective: 1200 }}
+        >
           <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
             <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 animate-pulse shrink-0" />
+              <AnimatedFlame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 shrink-0" />
               <span>Recently Uploaded Movies</span>
             </h2>
           </div>
           <CategoryCarousel title="" movies={recentMovies} />
-        </div>
+        </motion.div>
       )}
 
       {recentSeries.length > 0 && (
-        <div>
+        <motion.div
+          initial={{ scale: 0.97, y: 24, rotateX: 4 }}
+          whileInView={{ scale: 1, y: 0, rotateX: 0 }}
+          viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+          transition={{ type: "spring", stiffness: 280, damping: 24 }}
+          style={{ transformPerspective: 1200 }}
+        >
           <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
             <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 fill-rose-500 animate-pulse shrink-0" />
+              <AnimatedFlame className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 fill-rose-500 shrink-0" />
               <span>Recently Uploaded Series</span>
             </h2>
           </div>
           <CategoryCarousel title="" movies={recentSeries} />
-        </div>
+        </motion.div>
       )}
     </div>
   );

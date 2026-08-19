@@ -39,3 +39,33 @@ body::-webkit-scrollbar {
   scrollbar-width: none !important;
 }
 
+/* Eye-catching organic flame flicker & fire glow animation */
+@keyframes flame-flicker {
+  0%, 100% {
+    transform: scale(1) rotate(-2.5deg) translateY(0);
+    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.45)) brightness(1);
+  }
+  20% {
+    transform: scale(1.16) rotate(3.5deg) translateY(-1.2px);
+    filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.75)) brightness(1.2);
+  }
+  40% {
+    transform: scale(0.95) rotate(-3.5deg) translateY(0.6px);
+    filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.55)) brightness(1.05);
+  }
+  60% {
+    transform: scale(1.18) rotate(3deg) translateY(-1.6px);
+    filter: drop-shadow(0 0 7px rgba(249, 115, 22, 0.85)) brightness(1.25);
+  }
+  80% {
+    transform: scale(1.03) rotate(-1.5deg) translateY(-0.4px);
+    filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.6)) brightness(1.1);
+  }
+}
+
+.animate-flame {
+  display: inline-flex !important;
+  transform-origin: bottom center;
+  animation: flame-flicker 1.35s ease-in-out infinite;
+}
+

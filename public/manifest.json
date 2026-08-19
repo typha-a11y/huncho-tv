@@ -1,0 +1,23 @@
+{
+  "name": "HUNCHO TV",
+  "short_name": "HunchoTV",
+  "description": "Tazama Filamu na Tamthilia Zote za Kiswahili na Zilizotafsiriwa",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9FB",
+  "theme_color": "#6366F1",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

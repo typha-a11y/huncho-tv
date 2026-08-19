@@ -1,7 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Check, Sparkles, Shield, CreditCard, X, Smartphone, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { 
+  Check, 
+  Sparkles, 
+  Shield, 
+  CreditCard, 
+  X, 
+  Smartphone, 
+  ArrowRight, 
+  Loader2, 
+  PhoneCall, 
+  AlertCircle, 
+  RefreshCw 
+} from "lucide-react";
 import { useStore } from "../lib/store";
+import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import logoImg from "../assets/logo.png";
 
 interface SubscriptionPlan {
@@ -107,41 +120,142 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
   const [selectedPlanId, setSelectedPlanId] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
   const [selectedProvider, setSelectedProvider] = useState<string>("M-Pesa");
   const [phoneNumber, setPhoneNumber] = useState<string>("0754000000");
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  
+  // Payment Flow States
+  const [isInitiating, setIsInitiating] = useState<boolean>(false);
+  const [waitingForPin, setWaitingForPin] = useState<boolean>(false);
+  const [activeReference, setActiveReference] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
-  const [expandedFeatures, setExpandedFeatures] = useState<boolean>(false);
-
-  if (!isOpen) return null;
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
 
   const activePlan = PLANS.find((p) => p.id === selectedPlanId) || PLANS[2];
 
-  const handleSubscribe = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaymentSuccess(true);
-      if (user) {
-        setUser({
-          ...user,
-          is_pro: true,
-          plan_type: activePlan.id,
-          plan_name: activePlan.name,
-          plan_price: activePlan.formattedPrice,
-          plan_expires_at: new Date(Date.now() + (activePlan.id === "daily" ? 86400000 : activePlan.id === "weekly" ? 7 * 86400000 : activePlan.id === "monthly" ? 30 * 86400000 : 365 * 86400000)).toISOString()
-        });
-      } else {
-        setUser({
-          id: "usr_demo_" + Date.now(),
-          email: "mwanachama@hunchotv.co.tz",
-          full_name: "Huncho VIP Member",
-          is_pro: true,
-          plan_type: activePlan.id,
-          plan_name: activePlan.name,
-          plan_price: activePlan.formattedPrice,
-          plan_expires_at: new Date(Date.now() + 30 * 86400000).toISOString()
-        });
+  // Poll payment status while waiting for user to enter phone PIN
+  const checkPaymentStatus = useCallback(async () => {
+    if (!activeReference || !waitingForPin) return;
+
+    try {
+      const res = await fetch(
+        `/api/payments/status?reference=${encodeURIComponent(activeReference)}&userId=${encodeURIComponent(user?.id || "")}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "COMPLETED" || data.isPro) {
+          setWaitingForPin(false);
+          setPaymentSuccess(true);
+          setPaymentError(null);
+
+          // Update Zustand store with SERVER-CONFIRMED profile fields ONLY
+          const expiresAt = data.planExpiresAt || new Date(Date.now() + 30 * 86400000).toISOString();
+          const confirmedPlanType = data.planType || activePlan.id;
+          const planMeta = PLANS.find((p) => p.id === confirmedPlanType) || activePlan;
+
+          if (user) {
+            setUser({
+              ...user,
+              is_pro: true,
+              plan_type: confirmedPlanType,
+              plan_name: planMeta.name,
+              plan_price: planMeta.formattedPrice,
+              plan_expires_at: expiresAt,
+            });
+          } else {
+            setUser({
+              id: "usr_tz_" + Date.now(),
+              email: "mwanachama@hunchotv.co.tz",
+              full_name: "Huncho VIP Member",
+              is_pro: true,
+              plan_type: confirmedPlanType,
+              plan_name: planMeta.name,
+              plan_price: planMeta.formattedPrice,
+              plan_expires_at: expiresAt,
+            });
+          }
+        }
       }
-    }, 1200);
+    } catch (err) {
+      console.warn("Error polling payment status:", err);
+    }
+  }, [activeReference, waitingForPin, user, activePlan, setUser]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (waitingForPin && activeReference) {
+      interval = setInterval(() => {
+        checkPaymentStatus();
+      }, 2500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [waitingForPin, activeReference, checkPaymentStatus]);
+
+  const { modalRef, modalProps } = useModalAccessibility({
+    isOpen,
+    onClose: () => {
+      handleReset();
+      onClose();
+    },
+  });
+
+  if (!isOpen) return null;
+
+  // Initiate real mobile money STK push via server endpoint
+  const handleInitiatePaymentSubmit = async () => {
+    setIsInitiating(true);
+    setPaymentError(null);
+
+    try {
+      const response = await fetch("/api/payments/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: selectedPlanId,
+          phoneNumber,
+          provider: selectedProvider,
+          userId: user?.id || "usr_tz_" + Date.now(),
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success && data.reference) {
+        setActiveReference(data.reference);
+        setWaitingForPin(true);
+      } else {
+        setPaymentError(data.message || "Imefeli kutuma ombi la malipo. Tafadhali jaribu tena.");
+      }
+    } catch (err: any) {
+      setPaymentError("Tatizo la mtandao. Tafadhali hakikisha muunganisho wako kisha ujaribu tena.");
+    } finally {
+      setIsInitiating(false);
+    }
+  };
+
+  // Trigger test callback in dev/demo mode
+  const handleSimulatePinConfirmation = async () => {
+    if (!activeReference) return;
+    setIsSimulating(true);
+
+    try {
+      await fetch("/api/payments/simulate-callback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference: activeReference }),
+      });
+      await checkPaymentStatus();
+    } catch (err) {
+      console.warn("Simulation callback error:", err);
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  const handleReset = () => {
+    setWaitingForPin(false);
+    setActiveReference(null);
+    setPaymentError(null);
+    setPaymentSuccess(false);
   };
 
   return createPortal(
@@ -150,7 +264,10 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
       onClick={onClose}
     >
       <div 
-        className="bg-white w-full max-w-4xl rounded-t-[32px] rounded-b-none shadow-2xl border-t border-slate-100 overflow-hidden max-h-[90vh] flex flex-col mb-0 pb-safe animate-in slide-in-from-bottom duration-300 ease-out transition-all"
+        ref={modalRef}
+        {...modalProps}
+        aria-labelledby="plans-modal-title"
+        className="bg-white w-full max-w-4xl rounded-t-[32px] rounded-b-none shadow-2xl border-t border-slate-100 overflow-hidden max-h-[90vh] flex flex-col mb-0 pb-safe animate-in slide-in-from-bottom duration-300 ease-out transition-all focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Centered Drag Handle Bar */}
@@ -165,35 +282,40 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
                 <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
                 <span>Huncho VIP</span>
               </div>
-              <h2 className="text-xs sm:text-base font-black tracking-tight text-slate-900 truncate">
+              <h2 id="plans-modal-title" className="text-xs sm:text-base font-black tracking-tight text-slate-900 truncate">
                 Chagua Kifurushi (TZS)
               </h2>
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer shrink-0 ml-2"
+            onClick={() => {
+              handleReset();
+              onClose();
+            }}
+            aria-label="Funga dirisha la vifurushi"
+            className="p-1.5 sm:p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer shrink-0 ml-2 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
           >
             <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {paymentSuccess ? (
+          /* SUCCESS STATE - Confirmed Server-Side */
           <div className="p-6 sm:p-10 text-center space-y-5 my-auto overflow-y-auto">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner animate-bounce">
               <Check className="w-8 h-8 sm:w-10 sm:h-10 stroke-[3]" />
             </div>
             <div className="space-y-2 max-w-md mx-auto">
               <h3 className="text-xl sm:text-2xl font-black text-slate-900">Hongera! VIP Inafanya Kazi</h3>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Umefanikiwa kujiunga na <span className="font-extrabold text-indigo-600">{activePlan.name} ({activePlan.formattedPrice})</span>. 
+                Malipo yako yamethibitishwa na server! Umefanikiwa kujiunga na <span className="font-extrabold text-indigo-600">{activePlan.name} ({activePlan.formattedPrice})</span>. 
                 Sasa unaweza kutazama na kudownload filamu zote za Huncho TV bila kikomo.
               </p>
             </div>
             <div className="pt-2">
               <button
                 onClick={() => {
-                  setPaymentSuccess(false);
+                  handleReset();
                   onClose();
                 }}
                 className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-600/20 cursor-pointer"
@@ -202,7 +324,68 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
               </button>
             </div>
           </div>
+        ) : waitingForPin ? (
+          /* WAITING FOR PIN ON PHONE STATE */
+          <div className="p-6 sm:p-8 text-center space-y-5 my-auto overflow-y-auto">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto border-2 border-indigo-200 shadow-inner">
+              <PhoneCall className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-600 animate-pulse" />
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+              </div>
+            </div>
+
+            <div className="space-y-2 max-w-md mx-auto">
+              <div className="inline-block px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-black uppercase rounded-full tracking-wide">
+                Tunasubiri Uthibitisho wa Simu...
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                Weka PIN Yako Kwenye Simu
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Ombi la malipo la <strong className="text-indigo-600 font-black">{activePlan.formattedPrice}</strong> limetumwa kwenda namba:
+              </p>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 inline-block font-mono text-sm font-bold text-slate-800">
+                📱 {phoneNumber} ({selectedProvider})
+              </div>
+              <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-normal pt-1">
+                Angalia skrini ya simu yako, ingiza PIN yako ya <strong>{selectedProvider}</strong> kuthibitisha malipo. Server itakupa VIP mara tu baada ya uthibitisho.
+              </p>
+            </div>
+
+            {/* Reference info */}
+            {activeReference && (
+              <p className="text-[10px] font-mono text-slate-400">
+                Kumbukumbu ya Muamala: {activeReference}
+              </p>
+            )}
+
+            {/* Simulation / Dev Manual Action */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+              <button
+                onClick={handleSimulatePinConfirmation}
+                disabled={isSimulating}
+                className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSimulating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>Thibitisha PIN (Test Confirmation)</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleReset}
+                className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Rudi Nyuma
+              </button>
+            </div>
+          </div>
         ) : (
+          /* SELECT PLAN & PROVIDER FORM */
           <div className="overflow-y-auto no-scrollbar scrollbar-none p-3.5 sm:p-6 space-y-4 sm:space-y-6 flex-1 pb-8 sm:pb-6">
             {/* Intro banner */}
             <div className="bg-indigo-50/60 rounded-2xl p-3 sm:p-4 border border-indigo-100 text-center">
@@ -210,6 +393,14 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
                 Tazama filamu na tamthilia zote za Kiswahili (DJ Movies) kwa ubora wa 4K bila matangazo!
               </p>
             </div>
+
+            {/* Error Message display */}
+            {paymentError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-3 flex items-start gap-2.5 text-xs font-medium">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{paymentError}</span>
+              </div>
+            )}
 
             {/* Horizontal Scrollable Plans Row on Mobile, Grid on Desktop */}
             <div className="flex sm:grid sm:grid-cols-4 gap-3 sm:gap-4 overflow-x-auto sm:overflow-visible pt-3 pb-2 px-1 snap-x snap-mandatory scrollbar-none">
@@ -268,7 +459,7 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
                         </div>
                       </div>
 
-                      {/* Feature bullets (visible on mobile and desktop) */}
+                      {/* Feature bullets */}
                       <ul className="space-y-1.5 pt-2 border-t border-slate-100/80">
                         {plan.features.map((feature, idx) => (
                           <li key={idx} className="flex items-start gap-1.5 text-[10px] sm:text-[11px] text-slate-600 leading-tight">
@@ -355,12 +546,12 @@ export function PlansModal({ isOpen, onClose }: PlansModalProps) {
                 </div>
 
                 <button
-                  onClick={handleSubscribe}
-                  disabled={isProcessing}
+                  onClick={handleInitiatePaymentSubmit}
+                  disabled={isInitiating || !phoneNumber}
                   className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 min-h-[44px]"
                 >
-                  {isProcessing ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {isInitiating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
                       <span>Lipa Hapa ({activePlan.formattedPrice})</span>

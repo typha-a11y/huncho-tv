@@ -3,27 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Bookmark, Download, User as UserIcon, Flame, Radio } from "lucide-react";
+import { Bookmark, Download, User as UserIcon, Radio } from "lucide-react";
+import { AnimatedFlame } from "./components/AnimatedFlame";
 import { Navbar } from "./components/Navbar";
 import { HeroBanner } from "./components/HeroBanner";
 import { BentoGrid, CategoryCarousel } from "./components/BentoGrid";
-import { MovieDetailModal } from "./components/MovieDetailModal";
-import { VideoPlayerModal } from "./components/VideoPlayerModal";
-import { DownloadModal } from "./components/DownloadModal";
-import { AuthModal } from "./components/AuthModal";
-import { ProfileView } from "./components/ProfileView";
-import { DownloadsView } from "./components/DownloadsView";
-import { HistoryView } from "./components/HistoryView";
-import { ZilizotafsiriwaView, ZilizotafsiriwaCarousel } from "./components/ZilizotafsiriwaView";
-import { LiveSportsView } from "./components/LiveSportsView";
+import { ZilizotafsiriwaCarousel } from "./components/ZilizotafsiriwaCarousel";
 import { MovieGrid } from "./components/MovieGrid";
 
 import { WatchlistGrid } from "./components/WatchlistGrid";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { Recommendations } from "./components/Recommendations";
 import { RecentlyUploadedSection } from "./components/RecentlyUploadedSection";
+import { PwaInstallBanner } from "./components/PwaInstallBanner";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ViewLoadingFallback, ModalLoadingFallback } from "./components/ViewLoadingFallback";
+
 import { 
   getTrendingMovies, 
   getPopularMovies, 
@@ -32,11 +29,26 @@ import {
   getNowPlayingMovies,
   getGenres,
   getMoviesByGenre,
-  getCuratedDownloads
+  getCuratedDownloads,
+  isTmdbConfigured
 } from "./lib/api";
 import { Movie, Genre } from "./types";
 import { cn } from "./lib/utils";
 import { useStore } from "./lib/store";
+import { supabase, isSupabaseConfigured } from "./lib/supabaseClient";
+
+import { MovieDetailModal } from "./components/MovieDetailModal";
+import { VideoPlayerModal } from "./components/VideoPlayerModal";
+import { StreamPlayerModal } from "./components/StreamPlayerModal";
+import { DownloadModal } from "./components/DownloadModal";
+import { AuthModal } from "./components/AuthModal";
+import { ProfileView } from "./components/ProfileView";
+import { DownloadsView } from "./components/DownloadsView";
+import { HistoryView } from "./components/HistoryView";
+import { ZilizotafsiriwaView } from "./components/ZilizotafsiriwaView";
+import { LiveSportsView } from "./components/LiveSportsView";
+import { PlansModal } from "./components/PlansModal";
+import { SettingsModal } from "./components/SettingsModal";
 
 export default function App() {
   const [trending, setTrending] = useState<Movie[]>([]);
@@ -54,7 +66,46 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   
   const [activeTab, setActiveTab] = useState<string | number>("home");
-  const { selectedMovieId, watchlist, downloads, user } = useStore();
+  const { selectedMovieId, watchlist, downloads, user, setUser } = useStore();
+
+  // Supabase Auth listener & Session restoration
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const u = session.user;
+        setUser({
+          id: u.id,
+          email: u.email || "",
+          full_name: u.user_metadata?.full_name || u.email?.split("@")[0] || "User",
+          avatar_url: u.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.email || "")}`,
+          is_pro: true,
+          created_at: u.created_at,
+        });
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.user) {
+        const u = session.user;
+        setUser({
+          id: u.id,
+          email: u.email || "",
+          full_name: u.user_metadata?.full_name || u.email?.split("@")[0] || "User",
+          avatar_url: u.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.email || "")}`,
+          is_pro: true,
+          created_at: u.created_at,
+        });
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [setUser]);
 
   const handleRefresh = async () => {
     try {
@@ -278,8 +329,8 @@ export default function App() {
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
             )}
-            <span className="relative z-10 flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+            <span className="relative z-10 flex items-center gap-1.5">
+              <AnimatedFlame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
               Zilizotafsiriwa
               <span className={cn(
                 "text-[10px] font-black px-1.5 py-0.2 rounded-full ml-0.5",
@@ -410,7 +461,9 @@ export default function App() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              <LiveSportsView onExplore={() => setActiveTab("home")} />
+              <Suspense fallback={<ViewLoadingFallback message="Inapakia Michezo na TV..." />}>
+                <LiveSportsView onExplore={() => setActiveTab("home")} />
+              </Suspense>
             </motion.div>
           ) : activeTab === "zilizotafsiriwa" ? (
             <motion.div
@@ -420,7 +473,9 @@ export default function App() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              <ZilizotafsiriwaView onExplore={() => setActiveTab("home")} />
+              <Suspense fallback={<ViewLoadingFallback message="Inapakia Filamu Zilizotafsiriwa..." />}>
+                <ZilizotafsiriwaView onExplore={() => setActiveTab("home")} />
+              </Suspense>
             </motion.div>
           ) : activeTab === "watchlist" ? (
             <motion.div
@@ -440,7 +495,9 @@ export default function App() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              <DownloadsView onExplore={() => setActiveTab("home")} />
+              <Suspense fallback={<ViewLoadingFallback message="Inapakia Kupakuliwa..." />}>
+                <DownloadsView onExplore={() => setActiveTab("home")} />
+              </Suspense>
             </motion.div>
           ) : activeTab === "history" ? (
             <motion.div
@@ -450,7 +507,9 @@ export default function App() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              <HistoryView onExplore={() => setActiveTab("home")} />
+              <Suspense fallback={<ViewLoadingFallback message="Inapakia Historia..." />}>
+                <HistoryView onExplore={() => setActiveTab("home")} />
+              </Suspense>
             </motion.div>
           ) : activeTab === "profile" ? (
             <motion.div
@@ -460,7 +519,9 @@ export default function App() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              <ProfileView onNavigateTab={(tab) => setActiveTab(tab)} />
+              <Suspense fallback={<ViewLoadingFallback message="Inapakia Akaunti Yako..." />}>
+                <ProfileView onNavigateTab={(tab) => setActiveTab(tab)} />
+              </Suspense>
             </motion.div>
           ) : activeTab === "home" || activeTab === "discover" ? (
             <motion.div 
@@ -471,6 +532,21 @@ export default function App() {
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="space-y-4 md:space-y-8"
             >
+              {!isTmdbConfigured && (
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200/80 text-amber-900 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-amber-100 text-amber-800 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border border-amber-200">
+                      TMDB
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-amber-950">TMDB Not Configured</p>
+                      <p className="text-[11px] text-amber-800">
+                        Set <code className="font-mono bg-amber-100/80 px-1 rounded text-amber-900 font-bold">VITE_TMDB_API_KEY</code> in environment variables to enable live TMDB metadata & movie catalog.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <HeroBanner movies={heroMovies} badge={getBadgeText()} />
               
               {/* Trending Bento Grid */}
@@ -484,94 +560,139 @@ export default function App() {
 
               {/* Curated Downloads */}
               {curatedDownloads.length > 0 && (
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 26 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                      <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Curated Downloads</h2>
                   </div>
                   <CategoryCarousel title="" movies={curatedDownloads} />
-                </div>
+                </motion.div>
               )}
 
               {/* Upcoming Releases */}
-              <div>
+              <motion.div
+                initial={{ opacity: 0, y: 26 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Upcoming Releases</h2>
                    <button onClick={() => setActiveTab("upcoming")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                 </div>
                 <CategoryCarousel title="" movies={upcoming} />
-              </div>
+              </motion.div>
 
               {/* Now Playing in Cinemas */}
               {nowPlaying.length > 0 && (
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 26 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Now Playing in Theaters</h2>
                     <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                   </div>
                   <CategoryCarousel title="" movies={nowPlaying} />
-                </div>
+                </motion.div>
               )}
               
               {/* Popular Movies */}
-              <div>
+              <motion.div
+                initial={{ opacity: 0, y: 26 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Popular Movies</h2>
                    <button onClick={() => setActiveTab("popular")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                 </div>
                 <CategoryCarousel title="" movies={popular} />
-              </div>
+              </motion.div>
 
               {/* Action & Martial Arts */}
               {actionMovies.length > 0 && (
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 26 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Action & Martial Arts</h2>
                     <button onClick={() => setActiveTab(28)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Action</button>
                   </div>
                   <CategoryCarousel title="" movies={actionMovies} />
-                </div>
+                </motion.div>
               )}
               
               {/* Top Rated Classics */}
-              <div>
+              <motion.div
+                initial={{ opacity: 0, y: 26 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                    <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Top Rated Classics</h2>
                    <button onClick={() => setActiveTab("top_rated")} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All</button>
                 </div>
                 <CategoryCarousel title="" movies={topRated} />
-              </div>
+              </motion.div>
 
               {/* Animation & Family Magic */}
               {animationMovies.length > 0 && (
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 26 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Animation & Family Magic</h2>
                     <button onClick={() => setActiveTab(16)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Animation</button>
                   </div>
                   <CategoryCarousel title="" movies={animationMovies} />
-                </div>
+                </motion.div>
               )}
 
               {/* Sci-Fi & Cyberpunk */}
               {sciFiMovies.length > 0 && (
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 26 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Sci-Fi & Future Worlds</h2>
                     <button onClick={() => setActiveTab(878)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Sci-Fi</button>
                   </div>
                   <CategoryCarousel title="" movies={sciFiMovies} />
-                </div>
+                </motion.div>
               )}
 
               {/* Comedy & Laughs */}
               {comedyMovies.length > 0 && (
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 26 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-30px", amount: 0.15 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="flex items-center justify-between gap-2 mb-2 md:mb-3">
                     <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">Comedy & Stand-up Laughs</h2>
                     <button onClick={() => setActiveTab(35)} className="text-indigo-600 font-bold hover:underline text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">View All Comedy</button>
                   </div>
                   <CategoryCarousel title="" movies={comedyMovies} />
-                </div>
+                </motion.div>
               )}
 
               {/* Swahili Dubbed Featured Section */}
@@ -606,10 +727,29 @@ export default function App() {
       </main>
       </PullToRefresh>
 
-      {selectedMovieId && <MovieDetailModal />}
-      <VideoPlayerModal />
-      <DownloadModal />
-      <AuthModal />
+      {selectedMovieId && (
+        <ErrorBoundary isModal fallbackMessage="Haikuweza kufungua maelezo ya filamu.">
+          <Suspense fallback={<ModalLoadingFallback />}>
+            <MovieDetailModal />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      <ErrorBoundary isModal fallbackMessage="Haikuweza kufungua kicheza video.">
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <VideoPlayerModal />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary isModal fallbackMessage="Haikuweza kufungua mfumo wa kupakua.">
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <DownloadModal />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary isModal fallbackMessage="Haikuweza kufungua dirisha la akaunti.">
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <AuthModal />
+        </Suspense>
+      </ErrorBoundary>
+      <PwaInstallBanner />
     </div>
   );
 }

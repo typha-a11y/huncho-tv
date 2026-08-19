@@ -1,4 +1,5 @@
-import { Play, Plus, Check, Star, Flame } from "lucide-react";
+import { Play, Plus, Check, Star } from "lucide-react";
+import { AnimatedFlame } from "./AnimatedFlame";
 import { Movie } from "../types";
 import { useStore } from "../lib/store";
 import { motion, AnimatePresence } from "motion/react";
@@ -46,7 +47,7 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
     <div 
       className="relative w-full min-h-[420px] xs:min-h-[460px] rounded-3xl overflow-hidden shadow-xl cursor-pointer group flex flex-col justify-end bg-black"
       onClick={() => {
-        setSelectedMovieId(movie.id);
+        setSelectedMovieId(movie.id, movie.media_type);
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -77,8 +78,8 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
       
       <div className="relative z-20 p-5 flex flex-col gap-2">
           {badge && (
-            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/60 backdrop-blur-md rounded-full text-white text-[10px] font-bold w-fit shadow-sm border border-amber-300/40">
-              <Flame className="w-3 h-3 fill-current text-amber-200" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/80 backdrop-blur-md rounded-full text-white text-[11px] font-bold w-fit shadow-md border border-amber-300/60">
+              <AnimatedFlame className="w-3.5 h-3.5 fill-current text-amber-200" />
               <span>{badge}</span>
             </div>
           )}
@@ -107,7 +108,7 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
               </span>
               <span className="w-1 h-1 rounded-full bg-slate-500" />
               <span className="flex items-center gap-1 font-semibold text-red-300">
-                <Flame className="w-3.5 h-3.5 text-red-400 fill-red-400" /> {(movie.vote_average * 10).toFixed(0)}%
+                <AnimatedFlame className="w-3.5 h-3.5 text-red-400 fill-red-400" /> {(movie.vote_average * 10).toFixed(0)}%
               </span>
               <span className="w-1 h-1 rounded-full bg-slate-500" />
               <span className="font-semibold">
@@ -136,7 +137,8 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
                     e.stopPropagation();
                     setSelectedMovieId(movie.id);
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-0.5"
+                  aria-label={`Watch ${movie.title || movie.original_title}`}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-0.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   Watch Now
@@ -146,7 +148,8 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
                     e.stopPropagation();
                     isWatchlisted ? removeFromWatchlist(movie.id) : addToWatchlist(movie.id);
                   }}
-                  className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white py-2 px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all hover:-translate-y-0.5 border border-white/10"
+                  aria-label={isWatchlisted ? `Remove ${movie.title || movie.original_title} from watchlist` : `Add ${movie.title || movie.original_title} to watchlist`}
+                  className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white py-2 px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all hover:-translate-y-0.5 border border-white/10 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white"
                 >
                   {isWatchlisted ? <Check className="w-4 h-4 text-indigo-400" /> : <Plus className="w-4 h-4" />}
                   {isWatchlisted ? "Added" : "Add"}
@@ -162,7 +165,8 @@ export function HeroBanner({ movies, badge }: { movies: Movie[]; badge?: string 
                       e.stopPropagation();
                       setCurrentIndex(idx);
                     }}
-                    className={`h-1.5 rounded-full transition-all ${idx === currentIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`}
+                    aria-label={`Go to featured movie slide ${idx + 1}`}
+                    className={`h-1.5 rounded-full transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-white ${idx === currentIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`}
                   />
                 ))}
               </div>

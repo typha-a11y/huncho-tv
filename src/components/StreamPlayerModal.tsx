@@ -18,25 +18,13 @@ import {
   Info
 } from "lucide-react";
 import { StreamServer } from "../types";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabaseClient";
+import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import Hls from "hls.js";
 
 // Backend API Base URL
 const RENDER_BACKEND_URL = "https://huncho-tv-backend.onrender.com";
 const BACKEND_API_BASE_URL = RENDER_BACKEND_URL;
-
-// Initialize optional Supabase client
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://huncho-tv.supabase.co";
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || "";
-
-let supabaseClient: any = null;
-if (SUPABASE_URL && SUPABASE_KEY) {
-  try {
-    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-  } catch (err) {
-    console.warn("StreamPlayerModal: Supabase init fallback", err);
-  }
-}
 
 interface StreamPlayerModalProps {
   isOpen: boolean;
@@ -52,6 +40,9 @@ interface StreamPlayerModalProps {
   channelSlug?: string;
   directStreamUrl?: string;
   streamType?: string;
+  mediaType?: string;
+  season?: number;
+  episode?: number;
 }
 
 export function StreamPlayerModal({
@@ -67,7 +58,10 @@ export function StreamPlayerModal({
   isLiveStream = false,
   channelSlug,
   directStreamUrl,
-  streamType = "direct_hls"
+  streamType = "direct_hls",
+  mediaType = "movie",
+  season = 1,
+  episode = 1,
 }: StreamPlayerModalProps) {
   const [servers, setServers] = useState<StreamServer[]>([]);
   const [activeServer, setActiveServer] = useState<StreamServer | null>(null);
@@ -117,6 +111,11 @@ export function StreamPlayerModal({
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const { modalRef, modalProps, getTransitionDuration } = useModalAccessibility({
+    isOpen,
+    onClose,
+  });
+
   // Normalize effective Movie/IMDb ID
   const effectiveId = imdbId || (typeof movieId === "string" && movieId.startsWith("tt") ? movieId : `tt30851137`);
 
@@ -131,8 +130,28 @@ export function StreamPlayerModal({
         activeServer.stream_url?.includes("/api/v1/resolve-live")))
   );
 
-  // Default generated servers with GoMovies Standard FIRST as requested
+  // Default generated servers with GoMovies Standard FIRST and dynamic movie/tv embed URLs
   const generateDefaultServers = (targetId: string, titleStr: string): StreamServer[] => {
+    const isTv = mediaType === "tv";
+    const s = season || 1;
+    const e = episode || 1;
+
+    const goMoviesUrl = isTv
+      ? `https://2embed.cc/embed/tv/${targetId}&s=${s}&e=${e}`
+      : `https://2embed.cc/embed/${targetId}`;
+
+    const duloUrl = isTv
+      ? `https://vidsrc.me/embed/tv?imdb=${targetId}&season=${s}&episode=${e}`
+      : `https://vidsrc.me/embed/movie?imdb=${targetId}`;
+
+    const flixHqUrl = isTv
+      ? `https://vidsrc.to/embed/tv/${targetId}/${s}/${e}`
+      : `https://vidsrc.to/embed/movie/${targetId}`;
+
+    const vidSrcUrl = isTv
+      ? `https://vidsrc.xyz/embed/tv?imdb=${targetId}&season=${s}&episode=${e}`
+      : `https://vidsrc.xyz/embed/movie?imdb=${targetId}`;
+
     return [
       {
         id: "srv-gomovies-std",
@@ -140,7 +159,7 @@ export function StreamPlayerModal({
         title: titleStr,
         server_key: "gomovies",
         server_name: "GoMovies Standard",
-        stream_url: `https://2embed.cc/embed/${targetId}`,
+        stream_url: goMoviesUrl,
         stream_type: "embed",
         quality: "720p HD",
         latency_ms: 620,
@@ -165,7 +184,7 @@ export function StreamPlayerModal({
         title: titleStr,
         server_key: "dulo",
         server_name: "Dulo Stream VIP",
-        stream_url: `https://vidsrc.me/embed/movie?imdb=${targetId}`,
+        stream_url: duloUrl,
         stream_type: "embed",
         quality: "1080p HD",
         latency_ms: 180,
@@ -177,7 +196,7 @@ export function StreamPlayerModal({
         title: titleStr,
         server_key: "flixhq",
         server_name: "FlixHQ Pro",
-        stream_url: `https://vidsrc.to/embed/movie/${targetId}`,
+        stream_url: flixHqUrl,
         stream_type: "embed",
         quality: "1080p Ultra",
         latency_ms: 240,
@@ -189,7 +208,7 @@ export function StreamPlayerModal({
         title: titleStr,
         server_key: "vidsrc",
         server_name: "VidSrc Fast",
-        stream_url: `https://vidsrc.xyz/embed/movie?imdb=${targetId}`,
+        stream_url: vidSrcUrl,
         stream_type: "embed",
         quality: "1080p HD",
         latency_ms: 310,
@@ -273,9 +292,9 @@ export function StreamPlayerModal({
       }
 
       // Try fetching from Supabase if Render backend yielded no custom servers
-      if (fetchedServers.length === 0 && supabaseClient) {
+      if (fetchedServers.length === 0 && supabase) {
         try {
-          const { data, error } = await supabaseClient
+          const { data, error } = await supabase
             .from("stream_servers")
             .select("*")
             .eq("movie_id", effectiveId)
@@ -288,6 +307,59 @@ export function StreamPlayerModal({
         } catch (err) {
           console.warn("Supabase stream_servers fetch error:", err);
         }
+      }
+
+      // Query Direct Fallback Scraper Integration (Dulo & Nkiri)
+      try {
+        const typeParam = mediaType || "movie";
+        const seasonParam = typeParam === "tv" ? (season || 1) : 1;
+        const episodeParam = typeParam === "tv" ? (episode || 1) : 1;
+
+        let resolveUrl = `https://huncho-tv-backend.onrender.com/api/v1/resolve-stream?title=${encodeURIComponent(movieTitle)}&type=${typeParam}&tmdb_id=${effectiveId}`;
+        if (typeParam === "tv") {
+          resolveUrl += `&season=${seasonParam}&episode=${episodeParam}`;
+        }
+
+        const resolverRes = await fetch(resolveUrl);
+        if (resolverRes.ok) {
+          const resolverData = await resolverRes.json();
+          if (resolverData?.stream_url || resolverData?.url) {
+            const urlToUse = resolverData.stream_url || resolverData.url;
+            fetchedServers.push({
+              id: `srv-dulo-direct-${Date.now()}`,
+              movie_id: String(effectiveId),
+              title: movieTitle,
+              server_key: "dulo_direct",
+              server_name: "Dulo Scraper VIP Stream",
+              stream_url: urlToUse,
+              stream_type: urlToUse.includes(".m3u8") ? "direct_hls" : "embed",
+              quality: "1080p Ultra",
+              latency_ms: 110,
+              is_active: true
+            });
+          }
+          if (resolverData?.sources && Array.isArray(resolverData.sources)) {
+            resolverData.sources.forEach((src: any, idx: number) => {
+              if (src.url || src.stream_url) {
+                const streamUrl = src.url || src.stream_url;
+                fetchedServers.push({
+                  id: `srv-scraper-${idx}-${Date.now()}`,
+                  movie_id: String(effectiveId),
+                  title: movieTitle,
+                  server_key: src.source?.toLowerCase().includes("nkiri") ? "nkiri" : "dulo",
+                  server_name: src.name || src.source || "Nkiri / Dulo Direct VIP",
+                  stream_url: streamUrl,
+                  stream_type: (src.type === "direct" || streamUrl.includes(".m3u8")) ? "direct_hls" : "embed",
+                  quality: src.quality || "1080p HD",
+                  latency_ms: 140,
+                  is_active: true
+                });
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Backend direct scraper resolver fallback check:", err);
       }
 
       if (!isMounted) return;
@@ -411,12 +483,17 @@ export function StreamPlayerModal({
     <AnimatePresence>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-md overflow-y-auto">
         <motion.div
-          ref={containerRef}
+          ref={(node) => {
+            (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            modalRef.current = node;
+          }}
+          {...modalProps}
+          aria-labelledby="stream-player-title"
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-          className="relative w-full max-w-4xl bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col text-slate-900 my-auto"
+          transition={{ duration: getTransitionDuration(0.22), ease: "easeOut" }}
+          className="relative w-full max-w-4xl bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col text-slate-900 my-auto focus:outline-none"
         >
           {/* Mobile-Polished Header Bar */}
           <div className="flex items-center justify-between px-3.5 py-3 sm:px-5 sm:py-3.5 bg-white border-b border-slate-100 z-20">
@@ -427,7 +504,7 @@ export function StreamPlayerModal({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight truncate">
+                  <h2 id="stream-player-title" className="text-sm sm:text-base font-black text-slate-900 tracking-tight truncate">
                     {movieTitle}
                   </h2>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100/80 text-[#5E35B1] border border-purple-200/60 shrink-0">
@@ -449,7 +526,8 @@ export function StreamPlayerModal({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={handleRefreshStream}
-                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer flex items-center justify-center"
+                aria-label="Refresh video stream"
+                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
                 title="Refresh Stream"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -457,7 +535,8 @@ export function StreamPlayerModal({
 
               <button
                 onClick={onClose}
-                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer flex items-center justify-center"
+                aria-label="Close video player"
+                className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
                 title="Close Player"
               >
                 <X className="w-4 h-4" />

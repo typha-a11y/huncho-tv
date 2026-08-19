@@ -1,34 +1,45 @@
 import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, Variants } from "motion/react";
 import { Bookmark, Star, Trash2, Play, Sparkles, ArrowUpDown } from "lucide-react";
 import { useStore } from "../lib/store";
 import { getMovieDetails, getImageUrl, getPrimaryGenre } from "../lib/api";
 import { MovieDetails } from "../types";
 import { MoviePosterImage } from "./MoviePosterImage";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
+const containerVariants: Variants = {
+  hidden: {},
   show: {
-    opacity: 1,
     transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.05
+      staggerChildren: 0.04,
+      delayChildren: 0.01
     }
   }
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.96 },
+const cardVariants: Variants = {
+  hidden: { 
+    scale: 0.82, 
+    y: 36, 
+    rotateX: 18, 
+    rotateY: -3,
+    transformPerspective: 1100,
+    transformOrigin: "center bottom"
+  },
   show: { 
-    opacity: 1, 
+    scale: 1, 
     y: 0, 
-    scale: 1,
-    transition: { type: "spring", stiffness: 300, damping: 24 } 
+    rotateX: 0, 
+    rotateY: 0,
+    transformPerspective: 1100,
+    transformOrigin: "center bottom",
+    transition: { type: "spring", stiffness: 300, damping: 22, mass: 0.8 } 
   },
   exit: {
-    opacity: 0,
-    scale: 0.85,
-    transition: { duration: 0.2 }
+    scale: 0.84,
+    y: 20,
+    rotateX: -10,
+    transformPerspective: 1100,
+    transition: { duration: 0.18, ease: [0.4, 0, 1, 1] }
   }
 };
 
@@ -169,11 +180,22 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
             return (
               <motion.div
                 key={`${movie.id}-${index}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for ${movie.title || movie.original_title}`}
                 variants={cardVariants}
                 layout
-                whileHover={{ y: -4, scale: 1.02 }}
+                whileHover={{ y: -6, scale: 1.025, rotateX: -2, rotateY: 1 }}
+                whileTap={{ scale: 0.96, y: -2, rotateX: 3 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 onClick={() => setSelectedMovieId(movie.id)}
-                className="group cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/60 bg-white transition-all duration-200 ease-out flex flex-col relative"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedMovieId(movie.id);
+                  }
+                }}
+                className="group cursor-pointer rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/60 bg-white transition-all duration-200 ease-out flex flex-col relative focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
               >
                 {/* Remove button overlay */}
                 <button
@@ -181,7 +203,8 @@ export function WatchlistGrid({ onExplore }: { onExplore?: () => void }) {
                     e.stopPropagation();
                     removeFromWatchlist(movie.id);
                   }}
-                  className="absolute top-2 right-2 z-10 p-1.5 bg-slate-900/60 hover:bg-rose-600 text-white rounded-lg backdrop-blur-md transition-colors opacity-90 sm:opacity-0 group-hover:opacity-100 cursor-pointer"
+                  aria-label={`Remove ${movie.title || movie.original_title} from watchlist`}
+                  className="absolute top-2 right-2 z-10 p-1.5 bg-slate-900/60 hover:bg-rose-600 text-white rounded-lg backdrop-blur-md transition-colors opacity-90 sm:opacity-0 group-hover:opacity-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500"
                   title="Remove from Watchlist"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

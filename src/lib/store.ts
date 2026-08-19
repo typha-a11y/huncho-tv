@@ -1,11 +1,28 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { WatchHistoryItem, UserProfile, UserDownloadItem } from "../types";
+import { 
+  fetchUserWatchlist, 
+  addToUserWatchlist, 
+  removeFromUserWatchlist,
+  fetchUserHistory,
+  saveUserHistoryItem,
+  deleteUserHistoryItem,
+  fetchUserDownloads,
+  saveUserDownloadItem,
+  deleteUserDownloadItem,
+  deleteAllUserDownloads,
+  syncUserProfile
+} from "./syncService";
 
 interface AppState {
-  // Auth state
+  // Auth & Sync state
   user: UserProfile | null;
   setUser: (user: UserProfile | null) => void;
+  isSyncing: boolean;
+  lastSyncedAt: number | null;
+  syncCloudData: (targetUserId?: string) => Promise<void>;
+
   isAuthModalOpen: boolean;
   openAuthModal: () => void;
   closeAuthModal: () => void;
@@ -13,7 +30,7 @@ interface AppState {
 
   // Watchlist & History
   watchlist: (number | string)[];
-  addToWatchlist: (id: number | string) => void;
+  addToWatchlist: (id: number | string, meta?: { title?: string; posterPath?: string; rating?: number }) => void;
   removeFromWatchlist: (id: number | string) => void;
   
   history: Record<string, WatchHistoryItem>;
@@ -24,10 +41,12 @@ interface AppState {
   downloads: UserDownloadItem[];
   addDownload: (item: UserDownloadItem) => void;
   removeDownload: (id: string) => void;
+  clearAllDownloads: () => void;
 
   // Movie details & player
   selectedMovieId: number | string | null;
-  setSelectedMovieId: (id: number | string | null) => void;
+  selectedMediaType: "movie" | "tv" | null;
+  setSelectedMovieId: (id: number | string | null, mediaType?: "movie" | "tv" | string | null) => void;
   
   isVideoPlayerOpen: boolean;
   videoStreamUrl: string | null;
@@ -63,9 +82,74 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // Auth State Initializer
+      // Auth & Sync State Initializer
       user: null,
-      setUser: (user) => set({ user }),
+      isSyncing: false,
+      lastSyncedAt: null,
+
+      setUser: (user) => {
+        set({ user });
+        if (user?.id) {
+          syncUserProfile(user);
+          get().syncCloudData(user.id);
+        }
+      },
+
+      syncCloudData: async (targetUserId) => {
+        const userId = targetUserId || get().user?.id;
+        if (!userId) return;
+
+        set({ isSyncing: true });
+        try {
+          const [cloudWatchlist, cloudHistory, cloudDownloads] = await Promise.all([
+            fetchUserWatchlist(userId),
+            fetchUserHistory(userId),
+            fetchUserDownloads(userId),
+          ]);
+
+          set((state) => {
+            // Merge local watchlist with cloud watchlist
+            const mergedWatchlist = Array.from(new Set([...state.watchlist, ...cloudWatchlist]));
+
+            // Merge local history with cloud history
+            const mergedHistory = { ...cloudHistory, ...state.history };
+
+            // Merge local downloads with cloud downloads
+            const seenDl = new Set<string>();
+            const mergedDownloads: UserDownloadItem[] = [];
+            [...cloudDownloads, ...state.downloads].forEach((item) => {
+              const key = item.id || item.movie_id;
+              if (!seenDl.has(key)) {
+                seenDl.add(key);
+                mergedDownloads.push(item);
+              }
+            });
+
+            return {
+              watchlist: mergedWatchlist,
+              history: mergedHistory,
+              downloads: mergedDownloads,
+              isSyncing: false,
+              lastSyncedAt: Date.now(),
+            };
+          });
+
+          // Push any unsynced local items to cloud
+          const currentState = get();
+          currentState.watchlist.forEach((id) => {
+            addToUserWatchlist(userId, id);
+          });
+          Object.values(currentState.history).forEach((item) => {
+            saveUserHistoryItem(userId, item);
+          });
+          currentState.downloads.forEach((item) => {
+            saveUserDownloadItem(userId, item);
+          });
+        } catch (err) {
+          console.warn("syncCloudData failed:", err);
+          set({ isSyncing: false });
+        }
+      },
       
       isAuthModalOpen: false,
       openAuthModal: () => set({ isAuthModalOpen: true }),
@@ -82,45 +166,92 @@ export const useStore = create<AppState>()(
 
       // Watchlist
       watchlist: [],
-      addToWatchlist: (id) => {
+      addToWatchlist: (id, meta) => {
         set((state) => ({
           watchlist: state.watchlist.includes(id)
             ? state.watchlist
             : [...state.watchlist, id],
         }));
+
+        const { user } = get();
+        if (user?.id) {
+          addToUserWatchlist(user.id, id, meta);
+        }
       },
-      removeFromWatchlist: (id) =>
+      removeFromWatchlist: (id) => {
         set((state) => ({
           watchlist: state.watchlist.filter((wId) => wId !== id),
-        })),
+        }));
+
+        const { user } = get();
+        if (user?.id) {
+          removeFromUserWatchlist(user.id, id);
+        }
+      },
 
       // Watch History
       history: {},
-      updateHistory: (item) =>
+      updateHistory: (item) => {
         set((state) => ({
           history: { ...state.history, [item.id]: item },
-        })),
-      removeFromHistory: (id) =>
+        }));
+
+        const { user } = get();
+        if (user?.id) {
+          saveUserHistoryItem(user.id, item);
+        }
+      },
+      removeFromHistory: (id) => {
         set((state) => {
           const newHistory = { ...state.history };
           delete newHistory[id];
           return { history: newHistory };
-        }),
+        });
+
+        const { user } = get();
+        if (user?.id) {
+          deleteUserHistoryItem(user.id, id);
+        }
+      },
 
       // Downloads
       downloads: [],
-      addDownload: (item) =>
+      addDownload: (item) => {
         set((state) => ({
           downloads: [item, ...state.downloads.filter((d) => d.id !== item.id)],
-        })),
-      removeDownload: (id) =>
+        }));
+
+        const { user } = get();
+        if (user?.id) {
+          saveUserDownloadItem(user.id, item);
+        }
+      },
+      removeDownload: (id) => {
         set((state) => ({
           downloads: state.downloads.filter((item) => item.id !== id),
-        })),
+        }));
+
+        const { user } = get();
+        if (user?.id) {
+          deleteUserDownloadItem(user.id, id);
+        }
+      },
+      clearAllDownloads: () => {
+        set({ downloads: [] });
+
+        const { user } = get();
+        if (user?.id) {
+          deleteAllUserDownloads(user.id);
+        }
+      },
 
       // Selected movie
       selectedMovieId: null,
-      setSelectedMovieId: (id) => set({ selectedMovieId: id }),
+      selectedMediaType: null,
+      setSelectedMovieId: (id, mediaType = null) => set({ 
+        selectedMovieId: id, 
+        selectedMediaType: (mediaType === "tv" || mediaType === "movie") ? mediaType : null 
+      }),
       
       // Video player
       isVideoPlayerOpen: false,
@@ -183,4 +314,3 @@ export const useStore = create<AppState>()(
     }
   )
 );
-

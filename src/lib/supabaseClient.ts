@@ -1,38 +1,23 @@
 import { createClient } from "@supabase/supabase-js";
+import { env } from "./env";
 
-// Retrieve public Supabase environment variables safely
-const rawUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
-const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+// Format Supabase URL safely
+const rawUrl = env.VITE_SUPABASE_URL;
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
 
-let safeUrl = "https://placeholder-project.supabase.co";
-let isValidUrl = false;
-
-if (rawUrl) {
-  let urlToTest = rawUrl;
-  if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
-    urlToTest = `https://${rawUrl}.supabase.co`;
-  }
-  try {
-    const parsed = new URL(urlToTest);
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-      isValidUrl = true;
-      safeUrl = urlToTest;
-    }
-  } catch (e) {
-    isValidUrl = false;
-  }
+let safeUrl = rawUrl;
+if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+  safeUrl = `https://${rawUrl}.supabase.co`;
 }
-
-const supabaseAnonKey = rawKey || "placeholder-anon-key";
 
 // Helper check to verify if valid Supabase credentials exist
 export const isSupabaseConfigured = Boolean(
-  isValidUrl &&
-  rawKey &&
+  rawUrl &&
+  supabaseAnonKey &&
   !safeUrl.includes("placeholder")
 );
 
-// Create standard Supabase Client instance
+// Single centralized Supabase Client instance
 export const supabase = createClient(safeUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

@@ -1,8 +1,9 @@
 import { useState, FormEvent } from "react";
-import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
+import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { useStore } from "../lib/store";
+import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import logoImg from "../assets/logo.png";
 
 export function AuthModal() {
@@ -15,6 +16,11 @@ export function AuthModal() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const { modalRef, modalProps, getTransitionDuration } = useModalAccessibility({
+    isOpen: isAuthModalOpen,
+    onClose: closeAuthModal,
+  });
 
   if (!isAuthModalOpen) return null;
 
@@ -113,17 +119,21 @@ export function AuthModal() {
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
         <motion.div
+          ref={modalRef}
+          {...modalProps}
+          aria-labelledby="auth-modal-title"
           initial={{ opacity: 0, scale: 0.95, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 12 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto"
+          transition={{ duration: getTransitionDuration(0.2), ease: "easeOut" }}
+          className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto focus:outline-none"
         >
           {/* Top Banner Header */}
           <div className="bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 p-6 text-white relative">
             <button
               onClick={closeAuthModal}
-              className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer"
+              aria-label="Close sign in dialog"
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600"
             >
               <X className="w-5 h-5" />
             </button>
@@ -136,7 +146,7 @@ export function AuthModal() {
               </div>
             </div>
 
-            <h2 className="text-xl font-extrabold tracking-tight">
+            <h2 id="auth-modal-title" className="text-xl font-extrabold tracking-tight">
               {mode === "signin" ? "Welcome Back to HUNCHO TV" : "Create Your HUNCHO Account"}
             </h2>
             <p className="text-xs text-blue-100 mt-1 leading-relaxed">
@@ -154,7 +164,7 @@ export function AuthModal() {
                   setMode("signin");
                   setErrorMsg(null);
                 }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
                   mode === "signin"
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-slate-500 hover:text-slate-800"
@@ -168,7 +178,7 @@ export function AuthModal() {
                   setMode("signup");
                   setErrorMsg(null);
                 }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
                   mode === "signup"
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-slate-500 hover:text-slate-800"

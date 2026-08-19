@@ -2,9 +2,12 @@ import axios from "axios";
 import { Movie, MovieDetails, Ratings, OMDbResponse, DownloadSource, DownloadResolverResult } from "../types";
 import { supabase } from "./supabaseClient";
 import { getSafeImageUrl, cleanTitleForTMDB } from "./imageUtils";
+import { env } from "./env";
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY;
+const TMDB_API_KEY = env.VITE_TMDB_API_KEY;
+const OMDB_API_KEY = env.VITE_OMDB_API_KEY;
+
+export const isTmdbConfigured = Boolean(TMDB_API_KEY);
 
 const tmdb = axios.create({
   baseURL: "https://api.themoviedb.org/3",
@@ -20,7 +23,7 @@ export const getImageUrl = (path: string | null, size: "w500" | "original" = "w5
 const fallbackCache = new Map<string, string>();
 
 export const fetchTmdbPosterFallback = async (title: string): Promise<string | null> => {
-  if (!title) return null;
+  if (!title || !TMDB_API_KEY) return null;
   const cleanTitle = cleanTitleForTMDB(title);
   if (!cleanTitle) return null;
 
@@ -31,18 +34,15 @@ export const fetchTmdbPosterFallback = async (title: string): Promise<string | n
 
   try {
     let results: any[] = [];
-    if (TMDB_API_KEY) {
-      try {
-        const res = await tmdb.get("/search/multi", { params: { query: cleanTitle } });
-        results = res.data?.results || [];
-      } catch (e) {
-        // Fallback to direct fetch if axios instance fails
-      }
+    try {
+      const res = await tmdb.get("/search/multi", { params: { query: cleanTitle } });
+      results = res.data?.results || [];
+    } catch (e) {
+      // Fallback to direct fetch if axios instance fails
     }
 
-    if (results.length === 0) {
-      const apiKey = TMDB_API_KEY || "15d20e45d57a2298716a5796b0830a66"; // Public demo key fallback if missing
-      const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(cleanTitle)}`;
+    if (results.length === 0 && TMDB_API_KEY) {
+      const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanTitle)}`;
       const res = await axios.get(url, { timeout: 4000 });
       results = res.data?.results || [];
     }
@@ -58,17 +58,18 @@ export const fetchTmdbPosterFallback = async (title: string): Promise<string | n
     }
 
     // Secondary fallback: search movie endpoint directly
-    const apiKey = TMDB_API_KEY || "15d20e45d57a2298716a5796b0830a66";
-    const movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(cleanTitle)}`;
-    const movieRes = await axios.get(movieUrl, { timeout: 4000 });
-    const movieResults = movieRes.data?.results || [];
-    const movieMatch = movieResults.find((item: any) => item.poster_path || item.backdrop_path);
-    if (movieMatch) {
-      const imgPath = movieMatch.poster_path || movieMatch.backdrop_path;
-      if (imgPath) {
-        const fullUrl = `https://image.tmdb.org/t/p/w500${imgPath}`;
-        fallbackCache.set(cleanTitle, fullUrl);
-        return fullUrl;
+    if (TMDB_API_KEY) {
+      const movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanTitle)}`;
+      const movieRes = await axios.get(movieUrl, { timeout: 4000 });
+      const movieResults = movieRes.data?.results || [];
+      const movieMatch = movieResults.find((item: any) => item.poster_path || item.backdrop_path);
+      if (movieMatch) {
+        const imgPath = movieMatch.poster_path || movieMatch.backdrop_path;
+        if (imgPath) {
+          const fullUrl = `https://image.tmdb.org/t/p/w500${imgPath}`;
+          fallbackCache.set(cleanTitle, fullUrl);
+          return fullUrl;
+        }
       }
     }
   } catch (err) {
@@ -374,15 +375,19 @@ export const searchMulti = async (query: string): Promise<Movie[]> => {
   return results;
 };
 
-export const getMovieDetails = async (id: number | string): Promise<MovieDetails | null> => {
+export const fetchMediaDetails = async (
+  id: number | string,
+  mediaType?: "movie" | "tv" | string | null
+): Promise<MovieDetails | null> => {
   if (!TMDB_API_KEY) {
     return {
       ...mockMovies[0],
       id,
-      title: "Detailed Movie",
+      title: "Detailed Media",
       runtime: 120,
       genres: [{ id: 28, name: "Action" }, { id: 12, name: "Adventure" }],
       external_ids: { imdb_id: "tt1234567" },
+      media_type: (mediaType as any) || "movie",
     };
   }
 
@@ -400,7 +405,7 @@ export const getMovieDetails = async (id: number | string): Promise<MovieDetails
           id: m.id,
           title: m.title,
           original_title: m.title,
-          overview: `Custom added movie: ${m.title}`,
+          overview: `Custom added content: ${m.title}`,
           poster_path: m.poster_url,
           backdrop_path: m.backdrop_url,
           release_date: m.created_at,
@@ -409,7 +414,7 @@ export const getMovieDetails = async (id: number | string): Promise<MovieDetails
           genre_ids: [],
           runtime: 120,
           genres: m.category ? [{ id: 1, name: m.category }] : [],
-          media_type: "movie",
+          media_type: m.media_type || (mediaType as any) || "movie",
           external_ids: { imdb_id: m.imdb_id }
         };
       }
@@ -418,45 +423,78 @@ export const getMovieDetails = async (id: number | string): Promise<MovieDetails
     }
   }
 
-  try {
-    const res = await tmdb.get(`/movie/${id}`, {
+  const primaryType: "movie" | "tv" = mediaType === "tv" ? "tv" : "movie";
+  const secondaryType: "movie" | "tv" = primaryType === "movie" ? "tv" : "movie";
+
+  const fetchFromTmdb = async (type: "movie" | "tv") => {
+    const res = await tmdb.get(`/${type}/${id}`, {
       params: { append_to_response: "credits,external_ids,similar,videos" },
     });
-    return res.data;
-  } catch (err) {
-    console.warn("TMDB API Error: Could not fetch movie details. Trying Supabase fallback...");
-    // Fallback to Supabase search if TMDB fails (maybe it was a numeric Supabase ID)
-    try {
-      const { data: m, error } = await supabase
-        .from('movies')
-        .select('*')
-        .eq('id', id)
-        .single();
-        
-      if (!error && m) {
-        return {
-          id: m.id,
-          title: m.title,
-          original_title: m.title,
-          overview: `Custom added movie: ${m.title}`,
-          poster_path: m.poster_url,
-          backdrop_path: m.backdrop_url,
-          release_date: m.created_at,
-          vote_average: 10.0,
-          vote_count: 100,
-          genre_ids: [],
-          runtime: 120,
-          genres: m.category ? [{ id: 1, name: m.category }] : [],
-          media_type: "movie",
-          external_ids: { imdb_id: m.imdb_id }
-        };
-      }
-    } catch (e) {
-      console.warn("Supabase fallback fetch error:", e);
+    const data = res.data;
+    if (data) {
+      const isTv = type === "tv";
+      return {
+        ...data,
+        id: data.id || id,
+        title: data.title || data.name || data.original_name || data.original_title || "Untitled",
+        original_title: data.original_title || data.original_name || data.title || data.name || "Untitled",
+        release_date: data.release_date || data.first_air_date || "",
+        runtime: data.runtime || (data.episode_run_time && data.episode_run_time[0]) || 45,
+        media_type: isTv ? "tv" : "movie",
+      };
     }
     return null;
+  };
+
+  // Primary attempt based on requested mediaType
+  try {
+    const result = await fetchFromTmdb(primaryType);
+    if (result) return result;
+  } catch (err: any) {
+    console.warn(`TMDB ${primaryType}/${id} fetch failed (${err?.response?.status || err?.message}). Attempting automatic fallback to ${secondaryType}...`);
+    // Auto-fallback: If primary type returned 404/failed, retry with secondary type
+    try {
+      const fallbackResult = await fetchFromTmdb(secondaryType);
+      if (fallbackResult) return fallbackResult;
+    } catch (fallbackErr: any) {
+      console.warn(`TMDB ${secondaryType}/${id} auto-fallback fetch also failed:`, fallbackErr?.message || fallbackErr);
+    }
   }
+
+  // Final fallback to Supabase by numeric or string ID
+  try {
+    const { data: m, error } = await supabase
+      .from('movies')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (!error && m) {
+      return {
+        id: m.id,
+        title: m.title,
+        original_title: m.title,
+        overview: `Custom content: ${m.title}`,
+        poster_path: m.poster_url,
+        backdrop_path: m.backdrop_url,
+        release_date: m.created_at,
+        vote_average: 10.0,
+        vote_count: 100,
+        genre_ids: [],
+        runtime: 120,
+        genres: m.category ? [{ id: 1, name: m.category }] : [],
+        media_type: m.media_type || (mediaType as any) || "movie",
+        external_ids: { imdb_id: m.imdb_id }
+      };
+    }
+  } catch (e) {
+    console.warn("Supabase final fallback fetch error:", e);
+  }
+
+  return null;
 };
+
+export const getMovieDetails = fetchMediaDetails;
 
 export const getRatings = async (imdbId: string | null): Promise<Ratings> => {
   if (!OMDB_API_KEY || !imdbId) return { imdb: null, rottenTomatoes: null };

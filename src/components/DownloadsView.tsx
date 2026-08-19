@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Download, 
   HardDrive, 
@@ -10,7 +10,9 @@ import {
   CheckCircle2, 
   WifiOff, 
   FolderDown,
-  PlayCircle
+  PlayCircle,
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "../lib/store";
@@ -23,17 +25,48 @@ interface DownloadsViewProps {
 }
 
 export function DownloadsView({ onExplore }: DownloadsViewProps) {
-  const { downloads, removeDownload, setVideoPlayerOpen } = useStore();
+  const { downloads, removeDownload, clearAllDownloads, setVideoPlayerOpen } = useStore();
   const [filterTab, setFilterTab] = useState<"All Downloads" | "Local Files" | "Received">("All Downloads");
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<"all" | "filtered">("all");
 
   // Filter downloads according to active chip
-  const filteredDownloads = downloads.filter((item) => {
-    if (filterTab === "All Downloads") return true;
-    return item.source_type === filterTab;
-  });
+  const filteredDownloads = useMemo(() => {
+    return downloads.filter((item) => {
+      if (filterTab === "All Downloads") return true;
+      return item.source_type === filterTab;
+    });
+  }, [downloads, filterTab]);
+
+  // Compute total size estimate
+  const totalDownloadedGB = useMemo(() => {
+    let mb = 0;
+    downloads.forEach((item) => {
+      const sizeStr = item.file_size || "";
+      if (sizeStr.includes("GB")) {
+        const val = parseFloat(sizeStr.replace(/[^0-9.]/g, ""));
+        if (!isNaN(val)) mb += val * 1024;
+      } else if (sizeStr.includes("MB")) {
+        const val = parseFloat(sizeStr.replace(/[^0-9.]/g, ""));
+        if (!isNaN(val)) mb += val;
+      } else {
+        mb += 850; // default estimated 850MB
+      }
+    });
+    return (mb / 1024).toFixed(1);
+  }, [downloads]);
 
   const handlePlayDownload = (item: UserDownloadItem) => {
     setVideoPlayerOpen(true, item.download_url);
+  };
+
+  const handleDeleteConfirmed = () => {
+    if (deleteMode === "filtered" && filterTab !== "All Downloads") {
+      filteredDownloads.forEach((item) => removeDownload(item.id));
+    } else {
+      clearAllDownloads();
+    }
+    setShowDeleteAllModal(false);
   };
 
   return (
@@ -64,37 +97,68 @@ export function DownloadsView({ onExplore }: DownloadsViewProps) {
         {/* Visual Storage Meter Bar */}
         <div className="space-y-1.5 pt-1">
           <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
-            <div className="bg-indigo-600 h-full w-[22%]" title="HUNCHO TV Downloads" />
+            <div 
+              className="bg-indigo-600 h-full transition-all duration-500" 
+              style={{ width: `${Math.max(5, Math.min(60, downloads.length * 2.5))}%` }} 
+              title="HUNCHO TV Downloads" 
+            />
             <div className="bg-sky-400 h-full w-[14%]" title="System & Other Apps" />
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold px-0.5">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block" />
-              HUNCHO Downloads (1.7 GB)
+              HUNCHO Downloads ({totalDownloadedGB} GB)
             </span>
             <span>8.3 GB Free of 128 GB</span>
           </div>
         </div>
       </div>
 
-      {/* 2. Filter Chips Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
-        {(["All Downloads", "Local Files", "Received"] as const).map((chip) => {
-          const isActive = filterTab === chip;
-          return (
-            <button
-              key={chip}
-              onClick={() => setFilterTab(chip)}
-              className={`px-4 py-2 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer select-none ${
-                isActive
-                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/20"
-                  : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              {chip}
-            </button>
-          );
-        })}
+      {/* 2. Filter Chips & Actions Bar */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+          {(["All Downloads", "Local Files", "Received"] as const).map((chip) => {
+            const isActive = filterTab === chip;
+            const count = chip === "All Downloads" 
+              ? downloads.length 
+              : downloads.filter((d) => d.source_type === chip).length;
+
+            return (
+              <button
+                key={chip}
+                onClick={() => setFilterTab(chip)}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/20"
+                    : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <span>{chip}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600"
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Delete All Action Button */}
+        {downloads.length > 0 && (
+          <button
+            onClick={() => {
+              setDeleteMode("all");
+              setShowDeleteAllModal(true);
+            }}
+            aria-label="Delete all offline downloads"
+            className="px-3.5 py-2 rounded-2xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 hover:border-rose-300 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs active:scale-95 ml-auto"
+            title="Delete all downloaded titles"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete All</span>
+          </button>
+        )}
       </div>
 
       {/* 3. Downloaded List Cards or Empty State */}
@@ -163,7 +227,8 @@ export function DownloadsView({ onExplore }: DownloadsViewProps) {
                   <div className="flex items-center gap-2 self-end sm:self-center shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                     <button
                       onClick={() => handlePlayDownload(item)}
-                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      aria-label={`Play downloaded title ${item.title}`}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
                     >
                       <Play className="w-3.5 h-3.5 fill-white" />
                       <span>Play Now</span>
@@ -171,7 +236,8 @@ export function DownloadsView({ onExplore }: DownloadsViewProps) {
 
                     <button
                       onClick={() => removeDownload(item.id)}
-                      className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                      aria-label={`Remove downloaded title ${item.title}`}
+                      className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500"
                       title="Remove download"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -208,6 +274,73 @@ export function DownloadsView({ onExplore }: DownloadsViewProps) {
           )}
         </div>
       )}
+
+      {/* 4. Delete All Confirmation Modal Dialog */}
+      <AnimatePresence>
+        {showDeleteAllModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteAllModal(false)}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+            />
+
+            {/* Modal Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 z-10 space-y-5 text-slate-900"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <button
+                  onClick={() => setShowDeleteAllModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-black tracking-tight text-slate-900">
+                  Delete All Offline Downloads?
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                  This will permanently remove all <span className="font-bold text-slate-900">{downloads.length} downloaded titles</span> ({totalDownloadedGB} GB) from your local device storage.
+                </p>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  You can always re-download these titles whenever you are connected to Wi-Fi or cellular data.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllModal(false)}
+                  className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirmed}
+                  className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-rose-600/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Yes, Delete All</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

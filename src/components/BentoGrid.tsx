@@ -1,7 +1,8 @@
 import { motion } from "motion/react";
-import { Star, Flame } from "lucide-react";
+import { Star } from "lucide-react";
+import { AnimatedFlame } from "./AnimatedFlame";
 import { Movie } from "../types";
-import { getImageUrl, getPrimaryGenre } from "../lib/api";
+import { getPrimaryGenre } from "../lib/api";
 import { useStore } from "../lib/store";
 import { MoviePosterImage } from "./MoviePosterImage";
 
@@ -11,19 +12,45 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
   if (!movies?.length) return null;
 
   return (
-    <section className="py-2 md:py-4">
-      <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4 flex items-center gap-2">
-        <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 animate-pulse shrink-0" />
+    <motion.section 
+      initial={{ scale: 0.96, y: 32, rotateX: 6 }}
+      whileInView={{ scale: 1, y: 0, rotateX: 0 }}
+      viewport={{ once: true, margin: "-30px", amount: 0.12 }}
+      transition={{ type: "spring", stiffness: 280, damping: 24, mass: 0.85 }}
+      style={{ transformPerspective: 1200 }}
+      className="py-2 md:py-4"
+    >
+      <motion.h2 
+        initial={{ x: -16, scale: 0.97 }}
+        whileInView={{ x: 0, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ type: "spring", stiffness: 320, damping: 24 }}
+        className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4 flex items-center gap-2"
+      >
+        <AnimatedFlame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 shrink-0" />
         <span>{title}</span>
-      </h2>
+      </motion.h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-        {/* Large Feature Item */}
+        {/* Large Feature Item - 3D Kinetic Origami Pop */}
         <motion.div 
-          whileHover={{ y: -4, scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          onClick={() => setSelectedMovieId(movies[0].id)}
-          className="md:col-span-2 relative h-64 md:h-80 rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60"
+          role="button"
+          tabIndex={0}
+          aria-label={`View details for ${movies[0].title || movies[0].original_title}`}
+          initial={{ scale: 0.88, y: 35, rotateX: 14, rotateY: -3 }}
+          whileInView={{ scale: 1, y: 0, rotateX: 0, rotateY: 0 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.05 }}
+          whileHover={{ y: -6, scale: 1.015, rotateX: -2, rotateY: 1 }}
+          whileTap={{ scale: 0.97, y: -2, rotateX: 3 }}
+          style={{ transformPerspective: 1200, transformOrigin: "center bottom" }}
+          onClick={() => setSelectedMovieId(movies[0].id, movies[0].media_type)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setSelectedMovieId(movies[0].id, movies[0].media_type);
+            }
+          }}
+          className="md:col-span-2 relative h-64 md:h-80 rounded-3xl overflow-hidden cursor-pointer group shadow-sm hover:shadow-xl border border-slate-200/60 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 transition-shadow duration-300"
         >
           <MoviePosterImage 
             src={movies[0].backdrop_path || (movies[0] as any).poster_url || movies[0].poster_path} 
@@ -50,16 +77,29 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
           </div>
         </motion.div>
 
-        {/* Two smaller items stacked */}
+        {/* Two smaller items stacked - Dealing deck 3D tilt */}
         <div className="grid grid-cols-2 md:grid-cols-1 gap-3 sm:gap-4 h-48 sm:h-64 md:h-80">
           {movies.slice(1, 3).map((movie, idx) => (
             <motion.div 
               key={`${movie.id}-${idx}`}
-              whileHover={{ y: -3, scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              onClick={() => setSelectedMovieId(movie.id)}
-              className="relative h-full rounded-3xl overflow-hidden cursor-pointer group shadow-sm border border-slate-200/60"
+              role="button"
+              tabIndex={0}
+              aria-label={`View details for ${movie.title || movie.original_title}`}
+              initial={{ scale: 0.86, y: 30, rotateX: 16, rotateY: idx === 0 ? 4 : -4 }}
+              whileInView={{ scale: 1, y: 0, rotateX: 0, rotateY: 0 }}
+              viewport={{ once: true }}
+              transition={{ type: "spring", stiffness: 280, damping: 23, delay: 0.1 + idx * 0.08 }}
+              whileHover={{ y: -5, scale: 1.02, rotateX: -2 }}
+              whileTap={{ scale: 0.97, y: -2, rotateX: 3 }}
+              style={{ transformPerspective: 1200, transformOrigin: "center bottom" }}
+              onClick={() => setSelectedMovieId(movie.id, movie.media_type)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedMovieId(movie.id, movie.media_type);
+                }
+              }}
+              className="relative h-full rounded-3xl overflow-hidden cursor-pointer group shadow-sm hover:shadow-xl border border-slate-200/60 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 transition-shadow duration-300"
             >
               <MoviePosterImage 
                 src={movie.backdrop_path || (movie as any).poster_url || movie.poster_path} 
@@ -88,7 +128,7 @@ export function BentoGrid({ title, movies }: { title: string; movies: Movie[] })
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -98,26 +138,73 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
   if (!movies?.length) return null;
 
   return (
-    <section className={title ? "py-2 md:py-4" : ""}>
+    <motion.section 
+      initial={{ scale: 0.97, y: 28, rotateX: 4 }}
+      whileInView={{ scale: 1, y: 0, rotateX: 0 }}
+      viewport={{ once: true, margin: "-30px", amount: 0.12 }}
+      transition={{ type: "spring", stiffness: 280, damping: 24 }}
+      style={{ transformPerspective: 1200 }}
+      className={title ? "py-2 md:py-4" : ""}
+    >
       {title && (
-        <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4 flex items-center gap-2">
+        <motion.h2 
+          initial={{ x: -14, scale: 0.98 }}
+          whileInView={{ x: 0, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 320, damping: 24 }}
+          className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 mb-4 flex items-center gap-2"
+        >
           {(title.toLowerCase().includes("trending") || title.toLowerCase().includes("upload") || title.toLowerCase().includes("hot") || title.toLowerCase().includes("popular")) && (
-            <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 animate-pulse shrink-0" />
+            <AnimatedFlame className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-500 shrink-0" />
           )}
           <span>{title}</span>
-        </h2>
+        </motion.h2>
       )}
       <div className="snap-x snap-mandatory overflow-x-auto hide-scrollbar flex gap-3 px-4 -mx-4 pb-4">
         {movies.map((movie, index) => (
           <motion.div 
             key={`${movie.id}-${index}`}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.3) }}
-            whileHover={{ y: -5, scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSelectedMovieId(movie.id)}
-            className="snap-start shrink-0 w-[125px] xs:w-[145px] sm:w-[175px] flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/60 bg-white transition-shadow duration-200 ease-out"
+            role="button"
+            tabIndex={0}
+            aria-label={`View details for ${movie.title || movie.original_title}`}
+            initial={{ 
+              scale: 0.82, 
+              y: 36, 
+              rotateX: 18, 
+              rotateY: index % 2 === 0 ? -3 : 3,
+              rotateZ: index % 2 === 0 ? -1 : 1
+            }}
+            whileInView={{ 
+              scale: 1, 
+              y: 0, 
+              rotateX: 0, 
+              rotateY: 0,
+              rotateZ: 0
+            }}
+            viewport={{ once: true, margin: "-10px" }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 300, 
+              damping: 22, 
+              mass: 0.8,
+              delay: Math.min(index * 0.035, 0.28) 
+            }}
+            whileHover={{ 
+              y: -8, 
+              scale: 1.035, 
+              rotateX: -3, 
+              rotateY: 2 
+            }}
+            whileTap={{ scale: 0.96, y: -2, rotateX: 4 }}
+            style={{ transformPerspective: 1000, transformOrigin: "center bottom" }}
+            onClick={() => setSelectedMovieId(movie.id, movie.media_type)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setSelectedMovieId(movie.id, movie.media_type);
+              }
+            }}
+            className="snap-start shrink-0 w-[125px] xs:w-[145px] sm:w-[175px] flex-shrink-0 cursor-pointer group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/60 bg-white transition-shadow duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
           >
             <div className="aspect-[2/3] overflow-hidden relative">
               <MoviePosterImage
@@ -144,6 +231,6 @@ export function CategoryCarousel({ title, movies }: { title: string; movies: Mov
           </motion.div>
         ))}
       </div>
-    </section>
+    </motion.section>
   );
 }
